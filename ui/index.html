@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Link Crawler — Quarantine Analyzer</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --bg2: #1a1d27;
+    --bg3: #242836;
+    --border: #2e3348;
+    --text: #e2e4ed;
+    --text2: #9498ae;
+    --accent: #6c72ff;
+    --accent2: #5056e0;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --red: #f87171;
+    --cyan: #22d3ee;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 280px; background: var(--bg2); border-right: 1px solid var(--border);
+    padding: 24px 20px; overflow-y: auto; z-index: 100;
+  }
+  .sidebar h1 {
+    font-size: 16px; font-weight: 700; color: var(--accent);
+    margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+  }
+  .sidebar h1 .icon { font-size: 20px; }
+  .sidebar .subtitle { font-size: 11px; color: var(--text2); margin-bottom: 24px; }
+  .sidebar section { margin-bottom: 20px; }
+  .sidebar label {
+    display: block; font-size: 11px; font-weight: 600;
+    color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .sidebar input, .sidebar select {
+    width: 100%; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 13px; margin-bottom: 10px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .sidebar input:focus, .sidebar select:focus { border-color: var(--accent); }
+  .sidebar .checkbox-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    font-size: 13px; color: var(--text2); cursor: pointer;
+  }
+  .sidebar .checkbox-row input[type="checkbox"] {
+    width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
+  }
+  .btn-primary {
+    width: 100%; padding: 10px; background: var(--accent); color: #fff;
+    border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s; margin-top: 4px;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary {
+    width: 100%; padding: 10px; background: var(--bg3); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; font-size: 13px;
+    cursor: pointer; transition: all 0.2s; margin-top: 8px;
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* Main content */
+  .main { margin-left: 280px; padding: 32px 40px; min-height: 100vh; }
+
+  /* Status bar */
+  .status-bar {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 24px; font-size: 13px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--text2);
+  }
+  .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-dot.error { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .status-dot.idle { background: var(--accent); }
+
+  /* Cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 20px;
+  }
+  .card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .card .value.green { color: var(--green); }
+  .card .value.yellow { color: var(--yellow); }
+  .card .value.red { color: var(--red); }
+  .card .value.blue { color: var(--cyan); }
+
+  /* Tables */
+  .table-container {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; margin-bottom: 24px;
+  }
+  .table-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+  .table-header h3 { font-size: 14px; font-weight: 600; }
+  .table-scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 10px 16px; background: var(--bg3);
+    color: var(--text2); font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+  }
+  td {
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover td { background: rgba(108, 114, 255, 0.03); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+  }
+  .badge-pass { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+  .badge-review { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .badge-quarantine { background: rgba(251, 146, 60, 0.15); color: var(--orange); }
+  .badge-block { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+
+  .score-bar {
+    width: 80px; height: 6px; background: var(--bg3); border-radius: 3px;
+    overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px;
+  }
+  .score-bar-fill {
+    height: 100%; border-radius: 3px; transition: width 0.3s;
+  }
+  .link-cell { max-width: 350px; }
+  .link-cell a {
+    color: var(--accent); text-decoration: none; word-break: break-all;
+  }
+  .link-cell a:hover { text-decoration: underline; }
+
+  /* Progress */
+  .progress-bar {
+    width: 100%; height: 4px; background: var(--bg3); border-radius: 2px;
+    margin: 8px 0; overflow: hidden; display: none;
+  }
+  .progress-bar .fill {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    width: 0%; transition: width 0.3s;
+  }
+  .progress-bar.visible { display: block; }
+
+  /* Logs */
+  .log-panel {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px; max-height: 200px; overflow-y: auto; margin-bottom: 24px;
+    display: none;
+  }
+  .log-panel.visible { display: block; }
+  .log-panel .log-entry { padding: 2px 0; color: var(--text2); }
+  .log-panel .log-entry.info { color: var(--text); }
+  .log-panel .log-entry.warn { color: var(--yellow); }
+  .log-panel .log-entry.error { color: var(--red); }
+  .log-panel .log-entry.success { color: var(--green); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text2);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px; background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--text2);
+    transition: all 0.2s;
+  }
+  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tab:hover:not(.active) { border-color: var(--accent); }
+
+  /* Tooltip */
+  .tooltip-trigger {
+    position: relative; cursor: help; border-bottom: 1px dashed var(--text2);
+  }
+  .tooltip-trigger:hover::after {
+    content: attr(data-tip);
+    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+    background: var(--bg3); color: var(--text); padding: 6px 10px; border-radius: 6px;
+    font-size: 11px; white-space: nowrap; z-index: 10; border: 1px solid var(--border);
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .sidebar { width: 240px; }
+    .main { margin-left: 240px; padding: 20px; }
+    .cards { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <h1><span class="icon">📧</span> Email Link Crawler</h1>
+  <div class="subtitle">Quarantine Analyzer</div>
+
+  <section>
+    <label>IMAP Server</label>
+    <input type="text" id="imapServer" value="imap.gmail.com" placeholder="imap.gmail.com">
+
+    <label>IMAP Port</label>
+    <input type="number" id="imapPort" value="993" placeholder="993">
+
+    <label>Email Address</label>
+    <input type="text" id="username" placeholder="you@gmail.com">
+
+    <label>App Password</label>
+    <input type="password" id="password" placeholder="••••••••••••">
+
+    <label>Folder</label>
+    <input type="text" id="folder" value="INBOX" placeholder="INBOX">
+  </section>
+
+  <section>
+    <label>Scan Settings</label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="unseenOnly"> Only unread emails
+    </label>
+    <label>Max Emails</label>
+    <input type="number" id="maxEmails" value="20" min="1" max="500">
+
+    <label>Concurrent Crawls</label>
+    <input type="number" id="maxConcurrent" value="10" min="1" max="50">
+
+    <label>HTTP Timeout (sec)</label>
+    <input type="number" id="timeout" value="15" min="5" max="60">
+  </section>
+
+  <section>
+    <label>Analysis Mode</label>
+    <select id="mode">
+      <option value="crawl">URL Crawl Only</option>
+      <option value="threat">Threat Analysis Only</option>
+      <option value="full" selected>Full (Crawl + Threat)</option>
+      <option value="dns">DNS Auth Checks Only</option>
+    </select>
+    <label class="checkbox-row">
+      <input type="checkbox" id="noLookup"> Skip DNS lookups (fast)
+    </label>
+  </section>
+
+  <button class="btn-primary" id="startBtn" onclick="startScan()">
+    ▶ Start Scan
+  </button>
+  <button class="btn-secondary" onclick="exportJSON()">
+    📥 Export JSON
+  </button>
+
+  <div class="progress-bar" id="progressBar">
+    <div class="fill" id="progressFill"></div>
+  </div>
+  <div style="font-size:11px; color:var(--text2); margin-top:6px;" id="progressText"></div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="status-bar">
+    <div class="status-dot idle" id="statusDot"></div>
+    <span id="statusText">Ready — configure settings and start a scan</span>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="cards" id="cards" style="display:none;">
+    <div class="card">
+      <div class="label">Emails Scanned</div>
+      <div class="value blue" id="cardEmails">0</div>
+    </div>
+    <div class="card">
+      <div class="label">URLs Crawled</div>
+      <div class="value blue" id="cardUrls">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Successful</div>
+      <div class="value green" id="cardSuccess">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Errors</div>
+      <div class="value red" id="cardErrors">0</div>
+    </div>
+  </div>
+
+  <!-- Threat summary cards -->
+  <div class="cards" id="threatCards" style="display:none;">
+    <div class="card">
+      <div class="label">Blocked</div>
+      <div class="value red" id="cardBlocked">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Quarantined</div>
+      <div class="value" style="color:var(--orange)" id="cardQuarantine">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Need Review</div>
+      <div class="value" style="color:var(--yellow)" id="cardReview">0</div>
+    </div>
+    <div class="card">
+      <div class="label">Passed Clean</div>
+      <div class="value green" id="cardPassed">0</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="tabs" style="display:none;">
+    <div class="tab active" onclick="switchTab('emails', this)">📧 Emails</div>
+    <div class="tab" onclick="switchTab('urls', this)">🔗 URLs</div>
+    <div class="tab" onclick="switchTab('threat', this)">🛡️ Threat Analysis</div>
+  </div>
+
+  <!-- Email table -->
+  <div class="table-container" id="tabEmails" style="display:none;">
+    <div class="table-header">
+      <h3>Emails Found</h3>
+      <span style="font-size:12px;color:var(--text2);" id="emailCount"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Subject</th>
+            <th>From</th>
+            <th>Date</th>
+            <th>Links</th>
+          </tr>
+        </thead>
+        <tbody id="emailTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- URL table -->
+  <div class="table-container" id="tabUrls" style="display:none;">
+    <div class="table-header">
+      <h3>URL Crawl Results</h3>
+      <span style="font-size:12px;color:var(--text2);" id="urlCount"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th>Title</th>
+            <th>PDF</th>
+            <th>Download</th>
+            <th>URL</th>
+          </tr>
+        </thead>
+        <tbody id="urlTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Threat table -->
+  <div class="table-container" id="tabThreat" style="display:none;">
+    <div class="table-header">
+      <h3>Threat Assessment</h3>
+      <span style="font-size:12px;color:var(--text2);" id="threatCount"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>From</th>
+            <th>Score</th>
+            <th>Risk</th>
+            <th>Decision</th>
+            <th>Flags</th>
+          </tr>
+        </thead>
+        <tbody id="threatTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="log-panel" id="logPanel"></div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="emptyState">
+    <div class="icon">📭</div>
+    <p>No data yet. Configure your email settings and click Start Scan.</p>
+  </div>
+</div>
+
+<script>
+let scanData = null;
+let running = false;
+
+function setProgress(pct, text) {
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  const txt = document.getElementById('progressText');
+  bar.classList.add('visible');
+  fill.style.width = pct + '%';
+  txt.textContent = text;
+}
+
+function setStatus(text, type) {
+  document.getElementById('statusText').textContent = text;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + (type || 'idle');
+}
+
+function addLog(msg, type) {
+  const panel = document.getElementById('logPanel');
+  panel.classList.add('visible');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + (type || 'info');
+  const time = new Date().toLocaleTimeString();
+  entry.textContent = `[${time}] ${msg}`;
+  panel.appendChild(entry);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+async function startScan() {
+  if (running) return;
+  running = true;
+
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning...';
+  setStatus('Scanning in progress...', 'active');
+  setProgress(0, 'Connecting...');
+  addLog('Starting scan...', 'info');
+
+  const payload = {
+    imap_server: document.getElementById('imapServer').value,
+    imap_port: parseInt(document.getElementById('imapPort').value) || 993,
+    username: document.getElementById('username').value,
+    password: document.getElementById('password').value,
+    folder: document.getElementById('folder').value,
+    max_emails: parseInt(document.getElementById('maxEmails').value) || 20,
+    unseen_only: document.getElementById('unseenOnly').checked,
+    max_concurrent: parseInt(document.getElementById('maxConcurrent').value) || 10,
+    timeout: parseInt(document.getElementById('timeout').value) || 15,
+    mode: document.getElementById('mode').value,
+    no_lookup: document.getElementById('noLookup').checked,
+  };
+
+  try {
+    const resp = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    scanData = await resp.json();
+    addLog('Scan complete!', 'success');
+    setStatus('Scan complete', 'idle');
+    setProgress(100, 'Done');
+    renderResults(scanData);
+  } catch (err) {
+    addLog('Error: ' + err.message, 'error');
+    setStatus('Error: ' + err.message, 'error');
+  } finally {
+    running = false;
+    btn.disabled = false;
+    btn.textContent = '▶ Start Scan';
+  }
+}
+
+function renderResults(data) {
+  const emails = data.emails || [];
+  const urls = data.urls || [];
+  const threat = data.threat_analysis || [];
+
+  // Hide empty state
+  document.getElementById('emptyState').style.display = 'none';
+
+  // URL cards
+  if (urls.length > 0 || emails.length > 0) {
+    document.getElementById('cards').style.display = 'grid';
+    document.getElementById('cardEmails').textContent = emails.length;
+    document.getElementById('cardUrls').textContent = urls.length;
+    const ok = urls.filter(u => u.status_code >= 200 && u.status_code < 400);
+    document.getElementById('cardSuccess').textContent = ok.length;
+    document.getElementById('cardErrors').textContent = urls.length - ok.length;
+  }
+
+  // Threat cards
+  if (threat.length > 0) {
+    document.getElementById('threatCards').style.display = 'grid';
+    document.getElementById('tabs').style.display = 'flex';
+    document.getElementById('cardBlocked').textContent = threat.filter(t => t.decision === 'BLOCK').length;
+    document.getElementById('cardQuarantine').textContent = threat.filter(t => t.decision === 'QUARANTINE').length;
+    document.getElementById('cardReview').textContent = threat.filter(t => t.decision === 'REVIEW').length;
+    document.getElementById('cardPassed').textContent = threat.filter(t => t.decision === 'PASS').length;
+    document.getElementById('threatCount').textContent = threat.length + ' emails analyzed';
+  }
+
+  // Email table
+  if (emails.length > 0) {
+    document.getElementById('tabs').style.display = 'flex';
+    document.getElementById('emailCount').textContent = emails.length + ' emails';
+    const tbody = document.getElementById('emailTableBody');
+    tbody.innerHTML = emails.map(e => `
+      <tr>
+        <td><strong>${escapeHtml(e.subject || '(no subject)')}</strong></td>
+        <td style="white-space:nowrap;">${escapeHtml(e.sender)}</td>
+        <td style="white-space:nowrap;font-size:12px;color:var(--text2);">${escapeHtml(e.date || 'N/A')}</td>
+        <td class="link-cell">${e.links.length} link(s)</td>
+      </tr>
+    `).join('');
+  }
+
+  // URL table
+  if (urls.length > 0) {
+    document.getElementById('urlCount').textContent = urls.length + ' URLs';
+    const tbody = document.getElementById('urlTableBody');
+    tbody.innerHTML = urls.map((u, i) => {
+      const sc = u.status_code;
+      const scClass = (sc >= 200 && sc < 300) ? 'pass' : (sc >= 300 && sc < 400) ? 'review' : 'block';
+      return `
+        <tr>
+          <td style="color:var(--text2);">${i + 1}</td>
+          <td><span class="badge badge-${scClass}">${sc || 'ERR'}</span></td>
+          <td style="font-size:12px;">${u.response_time_ms.toFixed(0)}ms</td>
+          <td style="max-width:200px;font-size:12px;color:var(--text2);">${escapeHtml(u.title || '—')}</td>
+          <td style="text-align:center;">${u.is_pdf ? '📄' : ''}</td>
+          <td style="text-align:center;">${u.is_download ? '⬇' : ''}</td>
+          <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 120))}${u.url.length > 120 ? '...' : ''}</a></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Threat table
+  if (threat.length > 0) {
+    const tbody = document.getElementById('threatTableBody');
+    tbody.innerHTML = threat.map(t => {
+      const si = t.threat_score || {};
+      const score = si.score || 0;
+      const risk = si.risk_level || 'N/A';
+      const decision = t.decision || 'N/A';
+      const factors = si.factors || [];
+      const flags = factors.slice(0, 3).map(f => `<span class="tooltip-trigger" data-tip="${escapeHtml(f.detail)}">${f.factor}</span>`).join(', ');
+      const barColor = score >= 60 ? 'var(--red)' : score >= 40 ? 'var(--orange)' : score >= 20 ? 'var(--yellow)' : 'var(--green)';
+      const riskClass = decision === 'BLOCK' ? 'block' : decision === 'QUARANTINE' ? 'quarantine' : decision === 'REVIEW' ? 'review' : 'pass';
+      return `
+        <tr>
+          <td style="max-width:200px;font-size:12px;">${escapeHtml(t.subject || '—').substring(0, 60)}</td>
+          <td style="white-space:nowrap;font-size:12px;">${escapeHtml(t.from || '—')}</td>
+          <td>
+            <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${barColor};"></div></div>
+            ${score}
+          </td>
+          <td><span style="font-size:11px;font-weight:600;color:${barColor};">${risk}</span></td>
+          <td><span class="badge badge-${riskClass}">${decision}</span></td>
+          <td style="font-size:11px;max-width:250px;">${flags || 'None'}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  // Show first tab
+  if (emails.length > 0) switchTab('emails', document.querySelector('.tab'));
+  else if (urls.length > 0) {
+    document.getElementById('tabs').style.display = 'flex';
+    switchTab('urls', document.querySelectorAll('.tab')[0]);
+  }
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('tabEmails').style.display = name === 'emails' ? 'block' : 'none';
+  document.getElementById('tabUrls').style.display = name === 'urls' ? 'block' : 'none';
+  document.getElementById('tabThreat').style.display = name === 'threat' ? 'block' : 'none';
+}
+
+function exportJSON() {
+  if (!scanData) { alert('No data to export. Run a scan first.'); return; }
+  const blob = new Blob([JSON.stringify(scanData, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'email_scan_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
