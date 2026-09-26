@@ -48,7 +48,7 @@ Simulates an email security gateway with multi-layer scoring:
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR-USERNAME/email-crawler.git
+git clone https://github.com/vivek-pk/email-crawler.git
 cd email-crawler
 
 # Install dependencies
@@ -58,7 +58,11 @@ pip install -r requirements.txt
 ### Run the Web UI (Recommended)
 
 ```bash
-python3 server.py
+# Option 1: Using the start script
+./start.sh              # runs on port 8500
+
+# Option 2: Directly
+python3 server.py       # runs on port 8500
 ```
 
 Open **http://localhost:8500** in your browser.
