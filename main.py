@@ -250,17 +250,17 @@ class UrlCrawler:
         self.user_agent = user_agent
         self.max_redirects = max_redirects
 
-    async def crawl_one(self, session: aiohttp.ClientSession, url: str) -> UrlResult:
+    async def crawl_one(self, session: aiohttp.ClientSession, url: str, index: int = 0, total: int = 0) -> UrlResult:
         start = asyncio.get_event_loop().time()
         redirects: List[str] = []
         try:
+            logger.info("[CRAWL %d/%d] %s", index, total, url)
             async with session.get(
                 url,
                 allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=self.timeout_seconds),
                 headers={'User-Agent': self.user_agent},
             ) as resp:
-                # Capture redirect chain when allow_redirects=True
                 history = resp.history
                 redirects = [str(h.url) for h in history]
                 content_type = resp.headers.get('Content-Type', '')
@@ -271,16 +271,16 @@ class UrlCrawler:
                 )
 
                 text = await resp.text(errors='replace')
-                # extract title
                 title = ''
                 m = re.search(r'<title[^>]*>(.*?)</title>', text, re.IGNORECASE | re.DOTALL)
                 if m:
                     title = m.group(1).strip()
 
-                # count links on page
                 title_links = extract_links_from_html(text)
 
                 elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
+                logger.info("[CRAWL %d/%d] %s -> %d (%.0fms, %d links, %dKB)",
+                           index, total, url, resp.status, elapsed_ms, len(title_links), len(text.encode('utf-8'))//1024)
                 return UrlResult(
                     url=url,
                     status_code=resp.status,
@@ -313,11 +313,11 @@ class UrlCrawler:
         results: List[UrlResult] = []
 
         async with aiohttp.ClientSession() as session:
-            async def _crawl(url: str):
+            async def _crawl(url: str, idx: int):
                 async with semaphore:
-                    return await self.crawl_one(session, url)
+                    return await self.crawl_one(session, url, index=idx, total=len(urls))
 
-            tasks = [_crawl(u) for u in urls]
+            tasks = [_crawl(u, i) for i, u in enumerate(urls, 1)]
             gathered = await asyncio.gather(*tasks)
             results = list(gathered)
 

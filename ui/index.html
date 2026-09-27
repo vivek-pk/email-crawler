@@ -156,6 +156,12 @@
     width: 0%; transition: width 0.3s;
   }
   .progress-bar.visible { display: block; }
+  .crawl-status {
+    font-size: 12px; color: var(--text2); margin: 8px 0;
+    padding: 8px 12px; background: var(--bg3); border-radius: 6px;
+    font-family: monospace; display: none;
+  }
+  .crawl-status.visible { display: block; }
 
   /* Logs */
   .log-panel {
@@ -350,8 +356,16 @@
   <!-- URL table -->
   <div class="table-container" id="tabUrls" style="display:none;">
     <div class="table-header">
-      <h3>URL Crawl Results</h3>
+      <h3>URL Crawl Results — Each row proves the link was actually visited</h3>
       <span style="font-size:12px;color:var(--text2);" id="urlCount"></span>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:20px;">
+      <span>✅ Success: <strong style="color:var(--green);" id="urlOk">0</strong></span>
+      <span>⚠️ Redirects: <strong style="color:var(--yellow);" id="urlRedirects">0</strong></span>
+      <span>❌ Errors: <strong style="color:var(--red);" id="urlErrors">0</strong></span>
+      <span>📄 PDFs: <strong style="color:var(--cyan);" id="urlPdfs">0</strong></span>
+      <span>⬇️ Downloads: <strong style="color:var(--orange);" id="urlDownloads">0</strong></span>
+      <span>⏱️ Avg time: <strong id="urlAvgTime">0</strong>ms</span>
     </div>
     <div class="table-scroll">
       <table>
@@ -361,8 +375,8 @@
             <th>Status</th>
             <th>Time</th>
             <th>Title</th>
-            <th>PDF</th>
-            <th>Download</th>
+            <th>Type</th>
+            <th>Error / Details</th>
             <th>URL</th>
           </tr>
         </thead>
@@ -532,20 +546,42 @@ function renderResults(data) {
 
   // URL table
   if (urls.length > 0) {
-    document.getElementById('urlCount').textContent = urls.length + ' URLs';
+    document.getElementById('urlCount').textContent = urls.length + ' URLs crawled';
+    document.getElementById('urlTableBody').innerHTML = '';
+
+    // Calculate summary stats
+    const okCount = urls.filter(u => u.status_code >= 200 && u.status_code < 400).length;
+    const redirectCount = urls.filter(u => u.redirects && u.redirects.length > 0).length;
+    const errorCount = urls.filter(u => !u.status_code).length;
+    const pdfCount = urls.filter(u => u.is_pdf).length;
+    const dlCount = urls.filter(u => u.is_download).length;
+    const avgTime = urls.length > 0 ? urls.reduce((s, u) => s + u.response_time_ms, 0) / urls.length : 0;
+
+    document.getElementById('urlOk').textContent = okCount;
+    document.getElementById('urlRedirects').textContent = redirectCount;
+    document.getElementById('urlErrors').textContent = errorCount;
+    document.getElementById('urlPdfs').textContent = pdfCount;
+    document.getElementById('urlDownloads').textContent = dlCount;
+    document.getElementById('urlAvgTime').textContent = avgTime.toFixed(0);
+
+    // Render rows — errors first so user can see problems
+    const sorted = [...urls].sort((a, b) => (a.status_code ? 0 : 1) - (b.status_code ? 0 : 1));
     const tbody = document.getElementById('urlTableBody');
-    tbody.innerHTML = urls.map((u, i) => {
+    tbody.innerHTML = sorted.map((u, i) => {
+      const idx = urls.indexOf(u) + 1;
       const sc = u.status_code;
       const scClass = (sc >= 200 && sc < 300) ? 'pass' : (sc >= 300 && sc < 400) ? 'review' : 'block';
+      const typeIcons = [u.is_pdf ? '📄' : '', u.is_download ? '⬇' : ''].filter(Boolean).join(' ') || '📄';
+      const errorDetail = u.error ? `<span style="color:var(--red);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--yellow);font-size:11px;">${u.redirects.length} redirects → ${u.final_url.substring(0,80)}</span>` : '');
       return `
         <tr>
-          <td style="color:var(--text2);">${i + 1}</td>
+          <td style="color:var(--text2);">${idx}</td>
           <td><span class="badge badge-${scClass}">${sc || 'ERR'}</span></td>
           <td style="font-size:12px;">${u.response_time_ms.toFixed(0)}ms</td>
           <td style="max-width:200px;font-size:12px;color:var(--text2);">${escapeHtml(u.title || '—')}</td>
-          <td style="text-align:center;">${u.is_pdf ? '📄' : ''}</td>
-          <td style="text-align:center;">${u.is_download ? '⬇' : ''}</td>
-          <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 120))}${u.url.length > 120 ? '...' : ''}</a></td>
+          <td style="text-align:center;font-size:14px;">${typeIcons}</td>
+          <td style="font-size:11px;max-width:250px;">${errorDetail || '✓ Crawled'}</td>
+          <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 100))}${u.url.length > 100 ? '...' : ''}</a></td>
         </tr>
       `;
     }).join('');
