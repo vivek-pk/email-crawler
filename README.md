@@ -130,6 +130,8 @@ python3 main.py --username you@gmail.com --password xxx --unseen-only
 | `--delay-max` | Max delay between requests (sec) | `0.8` |
 | `--no-cookies` | Disable cookie handling | `false` |
 | `--no-human-timing` | Disable human-like delays (fast mode) | `false` |
+| `--same-ua` | Use same User-Agent for all requests | `false` |
+| `--custom-ua` | Custom User-Agent string (overrides rotation) | — |
 | `--analyze` | Full scan (crawling + threat) | — |
 | `--threat` | Threat analysis only | — |
 | `--dns-check` | DNS authentication only | — |
