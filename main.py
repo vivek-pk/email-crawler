@@ -242,15 +242,41 @@ class UrlCrawler:
         self,
         max_concurrent: int = 10,
         timeout_seconds: int = 15,
-        user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+        user_agent: str = None,
         max_redirects: int = 5,
+        rotate_user_agent: bool = True,
     ):
         self.max_concurrent = max_concurrent
         self.timeout_seconds = timeout_seconds
-        self.user_agent = user_agent
         self.max_redirects = max_redirects
+        self.rotate_user_agent = rotate_user_agent
+
+        if user_agent:
+            self.user_agents = [user_agent]
+        elif rotate_user_agent:
+            self.user_agents = [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/110.0",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.2 Safari/605.1.15",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.54",
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+                "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0",
+            ]
+        else:
+            self.user_agents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"]
+
+        self._ua_index = 0
+
+        import random
+        random.shuffle(self.user_agents)
 
     async def crawl_one(self, session: aiohttp.ClientSession, url: str, index: int = 0, total: int = 0) -> UrlResult:
+        import random
+        ua = random.choice(self.user_agents)
         start = asyncio.get_event_loop().time()
         redirects: List[str] = []
         try:
@@ -259,7 +285,7 @@ class UrlCrawler:
                 url,
                 allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=self.timeout_seconds),
-                headers={'User-Agent': self.user_agent},
+                headers={'User-Agent': ua},
             ) as resp:
                 history = resp.history
                 redirects = [str(h.url) for h in history]
