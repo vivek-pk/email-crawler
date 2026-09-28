@@ -126,6 +126,10 @@ python3 main.py --username you@gmail.com --password xxx --unseen-only
 | `--unseen-only` | Only unread emails | `false` |
 | `--max-concurrent` | Max HTTP concurrency | `10` |
 | `--timeout` | HTTP timeout (seconds) | `15` |
+| `--delay-min` | Min delay between requests (sec) | `0.1` |
+| `--delay-max` | Max delay between requests (sec) | `0.8` |
+| `--no-cookies` | Disable cookie handling | `false` |
+| `--no-human-timing` | Disable human-like delays (fast mode) | `false` |
 | `--analyze` | Full scan (crawling + threat) | — |
 | `--threat` | Threat analysis only | — |
 | `--dns-check` | DNS authentication only | — |

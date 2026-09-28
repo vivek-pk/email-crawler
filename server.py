@@ -239,6 +239,10 @@ def run_scan_logic(params: dict) -> dict:
             url_crawler = UrlCrawler(
                 max_concurrent=max_concurrent,
                 timeout_seconds=timeout,
+                delay_range=(params.get('delay_min', 0.1), params.get('delay_max', 0.8)),
+                randomize_headers=params.get('randomize_headers', True),
+                handle_cookies=not params.get('no_cookies', False),
+                simulate_human_timing=not params.get('no_human_timing', False),
             )
             url_results = asyncio.run(url_crawler.crawl_all(all_urls))
             results['urls'] = [{

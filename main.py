@@ -245,11 +245,22 @@ class UrlCrawler:
         user_agent: str = None,
         max_redirects: int = 5,
         rotate_user_agent: bool = True,
+        delay_range: tuple = (0.1, 0.8),
+        randomize_headers: bool = True,
+        handle_cookies: bool = True,
+        simulate_human_timing: bool = True,
     ):
         self.max_concurrent = max_concurrent
         self.timeout_seconds = timeout_seconds
         self.max_redirects = max_redirects
         self.rotate_user_agent = rotate_user_agent
+        self.delay_range = delay_range
+        self.randomize_headers = randomize_headers
+        self.handle_cookies = handle_cookies
+        self.simulate_human_timing = simulate_human_timing
+
+        import random
+        self._random = random
 
         if user_agent:
             self.user_agents = [user_agent]
@@ -269,14 +280,105 @@ class UrlCrawler:
         else:
             self.user_agents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"]
 
-        self._ua_index = 0
-
-        import random
         random.shuffle(self.user_agents)
 
-    async def crawl_one(self, session: aiohttp.ClientSession, url: str, index: int = 0, total: int = 0) -> UrlResult:
+        # Realistic header pools
+        self._accept_types = [
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        ]
+        self._accept_languages = [
+            'en-US,en;q=0.9',
+            'en-US,en;q=0.9,de;q=0.8',
+            'en-US,en;q=0.9,fr;q=0.8',
+            'en-GB,en;q=0.9',
+            'en-US,en;q=0.9,es;q=0.8',
+            'en-US,en;q=0.9,ja;q=0.8',
+        ]
+        self._sec_ch_ua_chromes = [
+            '"Chromium";v="109", "Google Chrome";v="109", "Not_A Brand";v="99"',
+            '"Chromium";v="110", "Google Chrome";v="110", "Not_A Brand";v="99"',
+            '"Chromium";v="111", "Google Chrome";v="111", "Not_A Brand";v="99"',
+            '"Microsoft Edge";v="111", "Chromium";v="111", "Not_A Brand";v="99"',
+        ]
+        self._sec_ch_ua = [
+            '"Google Chrome";v="109", "Not_A Brand";v="99", "Microsoft Edge";v="109"',
+            '"Google Chrome";v="110", "Not_A Brand";v="99", "Microsoft Edge";v="110"',
+            '"Google Chrome";v="111", "Not_A Brand";v="99", "Microsoft Edge";v="111"',
+        ]
+        self._sec_ch_ua_mobile = ['"?1"']
+        self._sec_ch_ua_platform = ['"Windows"', '"macOS"', '"Linux"']
+
+        import http.cookiejar
+        self.cookie_jar = http.cookiejar.CookieJar() if handle_cookies else None
+        self._visited_domains: Dict[str, float] = {}
+        self._request_count = 0
+
+    async def _get_headers(self, url: str) -> Dict[str, str]:
+        """Generate a randomized, realistic set of browser headers per request."""
         import random
         ua = random.choice(self.user_agents)
+        hostname = urlparse(url).hostname or ''
+        parsed = urlparse(url)
+        is_mobile = random.random() < 0.15  # 15% mobile probability
+        is_chrome = 'Chrome' in ua and 'Edg' not in ua and 'Safari' not in ua.split('Edg')[0]
+
+        headers = {
+            'User-Agent': ua,
+            'Accept': random.choice(self._accept_types),
+            'Accept-Language': random.choice(self._accept_languages),
+            'Accept-Encoding': 'gzip, deflate, br',
+            'DNT': '1' if random.random() < 0.7 else '0',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+
+        if is_chrome:
+            headers['Sec-Ch-Ua'] = random.choice(self._sec_ch_ua)
+            headers['Sec-Ch-Ua-Mobile'] = self._sec_ch_ua_mobile[0]
+            headers['Sec-Ch-Ua-Platform'] = random.choice(self._sec_ch_ua_platform)
+            if random.random() < 0.3:
+                headers['Sec-Fetch-Dest'] = 'document'
+                headers['Sec-Fetch-Mode'] = 'navigate'
+                headers['Sec-Fetch-Site'] = random.choice(['none', 'same-origin', 'cross-site', 'same-site'])
+                headers['Sec-Fetch-User'] = '?1'
+
+        if is_mobile:
+            headers['Sec-Ch-Ua-Mobile'] = '?1'
+            # Mobile UA override
+            mobile_versions = ['Chrome/109', 'Chrome/110', 'Chrome/111']
+            ua = ua.replace('Windows NT', 'Android 13; Pixel 6').replace('Macintosh', 'Linux; Android 13').replace('Safari/537.36', 'AppleMobile')
+            headers['User-Agent'] = ua
+
+        return headers
+
+    async def _apply_human_delay(self, url: str) -> None:
+        """Simulate human-like browsing delays — pages take time to load, humans read."""
+        if not self.simulate_human_timing:
+            return
+
+        hostname = urlparse(url).hostname or ''
+        self._request_count += 1
+
+        # Base delay
+        delay = self._random.uniform(self.delay_range[0], self.delay_range[1])
+
+        # Slow down for first visit to a domain (like opening a new tab)
+        if hostname not in self._visited_domains:
+            delay *= 1.5  # 50% more delay for new domains
+        import time
+        self._visited_domains[hostname] = time.time()
+
+        # Occasionally add extra delay (like human reading time)
+        if self._random.random() < 0.2:
+            delay += self._random.uniform(0.5, 2.0)  # 0.5-2s "reading" pause
+
+        await asyncio.sleep(delay)
+
+    async def crawl_one(self, session: aiohttp.ClientSession, url: str, index: int = 0, total: int = 0) -> UrlResult:
+        await self._apply_human_delay(url)
+        headers = await self._get_headers(url)
         start = asyncio.get_event_loop().time()
         redirects: List[str] = []
         try:
@@ -285,7 +387,8 @@ class UrlCrawler:
                 url,
                 allow_redirects=True,
                 timeout=aiohttp.ClientTimeout(total=self.timeout_seconds),
-                headers={'User-Agent': ua},
+                headers=headers,
+                cookies=self.cookie_jar,
             ) as resp:
                 history = resp.history
                 redirects = [str(h.url) for h in history]
@@ -305,8 +408,10 @@ class UrlCrawler:
                 title_links = extract_links_from_html(text)
 
                 elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
-                logger.info("[CRAWL %d/%d] %s -> %d (%.0fms, %d links, %dKB)",
-                           index, total, url, resp.status, elapsed_ms, len(title_links), len(text.encode('utf-8'))//1024)
+                ua_used = headers.get('User-Agent', 'unknown')
+                logger.info("[CRAWL %d/%d] %s -> %d (%.0fms, %d links, %dKB) UA: %s",
+                           index, total, url, resp.status, elapsed_ms, len(title_links), len(text.encode('utf-8'))//1024,
+                           ua_used[:60] + '...' if len(ua_used) > 60 else ua_used)
                 return UrlResult(
                     url=url,
                     status_code=resp.status,
@@ -1122,6 +1227,10 @@ def parse_args():
     parser.add_argument('--max-concurrent', type=int, default=10, help='Max concurrent HTTP requests')
     parser.add_argument('--timeout', type=int, default=15, help='HTTP request timeout in seconds')
     parser.add_argument('--max-redirects', type=int, default=5)
+    parser.add_argument('--delay-min', type=float, default=0.1, help='Min delay between requests (seconds)')
+    parser.add_argument('--delay-max', type=float, default=0.8, help='Max delay between requests (seconds)')
+    parser.add_argument('--no-cookies', action='store_true', help='Disable cookie handling')
+    parser.add_argument('--no-human-timing', action='store_true', help='Disable human-like delays')
     # Threat analysis
     parser.add_argument('--threat', '-t', action='store_true', help='Run quarantine/threat analysis')
     parser.add_argument('--analyze', '-a', action='store_true', help='Run both URL crawl + threat analysis')
@@ -1221,6 +1330,10 @@ async def main():
                     max_concurrent=args.max_concurrent,
                     timeout_seconds=args.timeout,
                     max_redirects=args.max_redirects,
+                    delay_range=(args.delay_min, args.delay_max),
+                    randomize_headers=True,
+                    handle_cookies=not args.no_cookies,
+                    simulate_human_timing=not args.no_human_timing,
                 )
                 results = await url_crawler.crawl_all(all_urls)
                 # Try to merge URL results back into analyses

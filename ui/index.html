@@ -250,6 +250,12 @@
 
     <label>HTTP Timeout (sec)</label>
     <input type="number" id="timeout" value="15" min="5" max="60">
+
+    <label>Request Delay Min (sec)</label>
+    <input type="number" id="delayMin" value="0.1" min="0" max="5" step="0.1">
+
+    <label>Request Delay Max (sec)</label>
+    <input type="number" id="delayMax" value="0.8" min="0" max="5" step="0.1">
   </section>
 
   <section>
@@ -262,6 +268,12 @@
     </select>
     <label class="checkbox-row">
       <input type="checkbox" id="noLookup"> Skip DNS lookups (fast)
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="noCookies"> Disable cookie handling
+    </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="noHumanTiming" checked> Disable human-like delays (faster)
     </label>
   </section>
 
@@ -469,8 +481,12 @@ async function startScan() {
     unseen_only: document.getElementById('unseenOnly').checked,
     max_concurrent: parseInt(document.getElementById('maxConcurrent').value) || 10,
     timeout: parseInt(document.getElementById('timeout').value) || 15,
+    delay_min: parseFloat(document.getElementById('delayMin').value) || 0.1,
+    delay_max: parseFloat(document.getElementById('delayMax').value) || 0.8,
     mode: document.getElementById('mode').value,
     no_lookup: document.getElementById('noLookup').checked,
+    no_cookies: document.getElementById('noCookies').checked,
+    no_human_timing: document.getElementById('noHumanTiming').checked,
   };
 
   try {
