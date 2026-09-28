@@ -275,6 +275,9 @@
     <label class="checkbox-row">
       <input type="checkbox" id="noHumanTiming" checked> Disable human-like delays (faster)
     </label>
+    <label class="checkbox-row">
+      <input type="checkbox" id="sameUa"> Use same User-Agent for all requests
+    </label>
   </section>
 
   <button class="btn-primary" id="startBtn" onclick="startScan()">
@@ -487,6 +490,7 @@ async function startScan() {
     no_lookup: document.getElementById('noLookup').checked,
     no_cookies: document.getElementById('noCookies').checked,
     no_human_timing: document.getElementById('noHumanTiming').checked,
+    same_user_agent: document.getElementById('sameUa').checked,
   };
 
   try {

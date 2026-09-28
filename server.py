@@ -246,6 +246,8 @@ def run_scan_logic(params: dict) -> dict:
                 randomize_headers=params.get('randomize_headers', True),
                 handle_cookies=not params.get('no_cookies', False),
                 simulate_human_timing=not params.get('no_human_timing', False),
+                rotate_user_agent=not params.get('same_user_agent', False),
+                user_agent=None,
             )
             url_results = asyncio.run(url_crawler.crawl_all(all_urls))
             results['urls'] = [{

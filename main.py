@@ -285,10 +285,10 @@ class UrlCrawler:
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
                 "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0",
             ]
+            random.shuffle(self.user_agents)
         else:
+            # same_user_agent=True with no custom UA: use the first default
             self.user_agents = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36"]
-
-        random.shuffle(self.user_agents)
 
         # Realistic header pools
         self._accept_types = [
@@ -1239,6 +1239,8 @@ def parse_args():
     parser.add_argument('--delay-max', type=float, default=0.8, help='Max delay between requests (seconds)')
     parser.add_argument('--no-cookies', action='store_true', help='Disable cookie handling')
     parser.add_argument('--no-human-timing', action='store_true', help='Disable human-like delays')
+    parser.add_argument('--same-ua', action='store_true', help='Use same User-Agent for all requests')
+    parser.add_argument('--custom-ua', help='Custom User-Agent string (overrides rotation)')
     # Threat analysis
     parser.add_argument('--threat', '-t', action='store_true', help='Run quarantine/threat analysis')
     parser.add_argument('--analyze', '-a', action='store_true', help='Run both URL crawl + threat analysis')
@@ -1342,6 +1344,8 @@ async def main():
                     randomize_headers=True,
                     handle_cookies=not args.no_cookies,
                     simulate_human_timing=not args.no_human_timing,
+                    rotate_user_agent=not args.same_ua,
+                    user_agent=args.custom_ua,
                 )
                 results = await url_crawler.crawl_all(all_urls)
                 # Try to merge URL results back into analyses
