@@ -490,6 +490,9 @@ async function startScan() {
   };
 
   try {
+    addLog('Sending scan request...', 'info');
+    addLog('Mode: ' + payload.mode + ', Unseen: ' + payload.unseen_only, 'info');
+    addLog('IMAP server: ' + payload.imap_server + ', Folder: ' + payload.folder, 'info');
     const resp = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

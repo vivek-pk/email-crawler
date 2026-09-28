@@ -169,17 +169,25 @@ class EmailCrawler:
 
     def fetch_emails(self) -> List[EmailMessage]:
         conn = self.connect()
-        conn.select(self.folder, readonly=True)
+        select_status, select_data = conn.select(self.folder, readonly=True)
+        logger.info("Selected folder: %s (status=%s, exists=%s)", self.folder, select_status, select_data)
 
-        criterion = '(UNSEEN)' if self.seen_marker else '(ALL)'
+        if self.seen_marker:
+            # Use FLAGS-based search for reliable unseen detection
+            criterion = 'UNSEEN'
+        else:
+            criterion = 'ALL'
+        logger.info("Search criteria: %s", criterion)
         status, data = conn.search(None, criterion)
         if status != 'OK':
             logger.warning("Search returned status=%s", status)
             conn.logout()
             return []
 
-        email_ids = data[0].split()
-        email_ids = email_ids[-self.max_emails:]  # newest N
+        raw_ids = data[0] if data else b''
+        email_ids = raw_ids.split() if raw_ids else []
+        logger.info("Found %d email(s) matching criteria (taking newest %d)", len(email_ids), self.max_emails)
+        email_ids = email_ids[-self.max_emails:] if email_ids else []
 
         results: List[EmailMessage] = []
         for eid in email_ids:

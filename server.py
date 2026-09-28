@@ -169,6 +169,8 @@ def run_scan_logic(params: dict) -> dict:
 
     # ── Step 1: Fetch emails ──────────────────────────────────────
     try:
+        import logging
+        logging.getLogger().info(f"=== Email fetch params: unseen_only={unseen_only}, seen_marker={'UNSEEN' if unseen_only else 'None'}, folder={folder} ===")
         email_crawler = EmailCrawler(
             imap_server=imap_server,
             imap_port=imap_port,
@@ -179,6 +181,7 @@ def run_scan_logic(params: dict) -> dict:
             seen_marker='UNSEEN' if unseen_only else None,
         )
         emails = email_crawler.fetch_emails()
+        logging.getLogger().info(f"=== Fetched {len(emails)} email(s) via IMAP ===")
     except Exception as e:
         results['error'] = f'Failed to connect to IMAP: {str(e)}'
         return results
