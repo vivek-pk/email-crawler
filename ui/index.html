@@ -738,6 +738,50 @@ tr:hover td {
     </div>
   </div>
 
+  <div class="sidebar-section">
+    <div class="section-label">Browser Simulation</div>
+    
+    <div class="checkbox-group">
+      <input type="checkbox" id="simulateJs" checked>
+      <label for="simulateJs">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>
+        Simulate JS Execution
+      </label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="simulateCss" checked>
+      <label for="simulateCss">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/></svg>
+        Simulate CSS Loading
+      </label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="simulateCookies" checked>
+      <label for="simulateCookies">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/></svg>
+        Simulate Cookie Consent
+      </label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="simulateTime" checked>
+      <label for="simulateTime">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Simulate Time on Page
+      </label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="simulateScroll" checked>
+      <label for="simulateScroll">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Simulate Scroll Behavior
+      </label>
+    </div>
+  </div>
+
   <button class="btn btn-primary" id="startBtn" onclick="startScan()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
     Start Scan
@@ -885,12 +929,12 @@ tr:hover td {
             <th>Status</th>
             <th>Time</th>
             <th>Title</th>
-            <th>Type</th>
-            <th>JS</th>
-            <th>CSS</th>
-            <th><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="10" cy="15" r="1.5" fill="currentColor"/><circle cx="14" cy="14" r="1.5" fill="currentColor"/></svg></th>
-            <th>Scroll</th>
-            <th>Time On Page</th>
+<th>Type</th>
+            <th><span class="tooltip-trigger" data-tip="Simulated JS execution detection">JS</span></th>
+            <th><span class="tooltip-trigger" data-tip="Simulated CSS loading detection">CSS</span></th>
+            <th><span class="tooltip-trigger" data-tip="Simulated cookie consent handling">Cookies</span></th>
+            <th><span class="tooltip-trigger" data-tip="Simulated user scroll depth">Scroll</span></th>
+            <th><span class="tooltip-trigger" data-tip="Simulated time spent on page">Time On Page</span></th>
             <th>Details</th>
             <th>URL</th>
           </tr>
@@ -996,6 +1040,11 @@ async function startScan() {
     no_cookies: document.getElementById('noCookies').checked,
     no_human_timing: document.getElementById('noHumanTiming').checked,
     same_user_agent: document.getElementById('sameUa').checked,
+    simulate_js: document.getElementById('simulateJs').checked,
+    simulate_css: document.getElementById('simulateCss').checked,
+    simulate_cookies: document.getElementById('simulateCookies').checked,
+    simulate_time: document.getElementById('simulateTime').checked,
+    simulate_scroll: document.getElementById('simulateScroll').checked,
   };
 
   try {

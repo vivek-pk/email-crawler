@@ -248,6 +248,11 @@ def run_scan_logic(params: dict) -> dict:
                 simulate_human_timing=not params.get('no_human_timing', False),
                 rotate_user_agent=not params.get('same_user_agent', False),
                 user_agent=None,
+                simulate_js_execution=not params.get('no_js', False),
+                simulate_css_loading=not params.get('no_css', False),
+                simulate_cookie_consent=not params.get('no_cookies', False),
+                simulate_time_on_page=not params.get('no_time', False),
+                simulate_scroll=not params.get('no_scroll', False),
             )
             url_results = asyncio.run(url_crawler.crawl_all(all_urls))
             results['urls'] = [{

@@ -264,6 +264,11 @@ class UrlCrawler:
         randomize_headers: bool = True,
         handle_cookies: bool = True,
         simulate_human_timing: bool = True,
+        simulate_js_execution: bool = True,
+        simulate_css_loading: bool = True,
+        simulate_cookie_consent: bool = True,
+        simulate_time_on_page: bool = True,
+        simulate_scroll: bool = True,
     ):
         self.max_concurrent = max_concurrent
         self.timeout_seconds = timeout_seconds
@@ -273,6 +278,11 @@ class UrlCrawler:
         self.randomize_headers = randomize_headers
         self.handle_cookies = handle_cookies
         self.simulate_human_timing = simulate_human_timing
+        self.simulate_js_execution = simulate_js_execution
+        self.simulate_css_loading = simulate_css_loading
+        self.simulate_cookie_consent = simulate_cookie_consent
+        self.simulate_time_on_page = simulate_time_on_page
+        self.simulate_scroll = simulate_scroll
 
         import random
         self._random = random
@@ -616,18 +626,36 @@ class UrlCrawler:
                 elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
 
                 # ── Simulate browser behaviors ────────────────────────────
-                js_result = self._simulate_js_execution(text)
-                css_result = self._simulate_css_loading(text)
-                cookie_result = self._simulate_cookie_consent(text, url)
-                scroll_result = self._simulate_scroll_behavior(text, len(text.encode('utf-8')))
+                if self.simulate_js_execution:
+                    js_result = self._simulate_js_execution(text)
+                else:
+                    js_result = {'js_executed': False, 'has_dynamic_links': False}
+                
+                if self.simulate_css_loading:
+                    css_result = self._simulate_css_loading(text)
+                else:
+                    css_result = {'css_loaded': False, 'render_delay_ms': 0}
+                
+                if self.simulate_cookie_consent:
+                    cookie_result = self._simulate_cookie_consent(text, url)
+                else:
+                    cookie_result = {'cookies_set': 0}
+                
+                if self.simulate_scroll:
+                    scroll_result = self._simulate_scroll_behavior(text, len(text.encode('utf-8')))
+                else:
+                    scroll_result = {'scroll_depth': 0}
 
                 # Calculate time on page
-                time_on_page = self._calculate_time_on_page(
-                    len(text.encode('utf-8')),
-                    len(title_links),
-                    js_result['js_executed'],
-                    scroll_result['scroll_depth']
-                )
+                if self.simulate_time_on_page:
+                    time_on_page = self._calculate_time_on_page(
+                        len(text.encode('utf-8')),
+                        len(title_links),
+                        js_result.get('js_executed', False),
+                        scroll_result.get('scroll_depth', 0)
+                    )
+                else:
+                    time_on_page = 0
 
                 # Apply CSS render delay
                 if css_result['css_loaded']:
@@ -1467,6 +1495,11 @@ def parse_args():
     parser.add_argument('--no-human-timing', action='store_true', help='Disable human-like delays')
     parser.add_argument('--same-ua', action='store_true', help='Use same User-Agent for all requests')
     parser.add_argument('--custom-ua', help='Custom User-Agent string (overrides rotation)')
+    parser.add_argument('--no-js', action='store_true', help='Disable JS execution simulation')
+    parser.add_argument('--no-css', action='store_true', help='Disable CSS loading simulation')
+    parser.add_argument('--no-cookies', action='store_true', help='Disable cookie consent simulation')
+    parser.add_argument('--no-time', action='store_true', help='Disable time-on-page simulation')
+    parser.add_argument('--no-scroll', action='store_true', help='Disable scroll simulation')
     # Threat analysis
     parser.add_argument('--threat', '-t', action='store_true', help='Run quarantine/threat analysis')
     parser.add_argument('--analyze', '-a', action='store_true', help='Run both URL crawl + threat analysis')
@@ -1572,6 +1605,11 @@ async def main():
                     simulate_human_timing=not args.no_human_timing,
                     rotate_user_agent=not args.same_ua,
                     user_agent=args.custom_ua,
+                    simulate_js_execution=not args.no_js,
+                    simulate_css_loading=not args.no_css,
+                    simulate_cookie_consent=not args.no_cookies,
+                    simulate_time_on_page=not args.no_time,
+                    simulate_scroll=not args.no_scroll,
                 )
                 results = await url_crawler.crawl_all(all_urls)
                 # Try to merge URL results back into analyses
