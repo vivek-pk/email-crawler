@@ -634,7 +634,7 @@ tr:hover td {
 <!-- Sidebar -->
 <div class="sidebar">
   <div class="brand">
-    <div class="brand-icon">🛡️</div>
+    <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
     <div class="brand-text">
       <h1>Email Crawler Pro</h1>
       <span>Threat Analysis Platform</span>
@@ -739,7 +739,7 @@ tr:hover td {
   </div>
 
   <button class="btn btn-primary" id="startBtn" onclick="startScan()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
     Start Scan
   </button>
   <button class="btn btn-secondary" onclick="exportJSON()">
@@ -758,7 +758,7 @@ tr:hover td {
 <!-- Header -->
 <div class="header">
   <div class="header-left">
-    <div class="header-logo">🛡️</div>
+    <div class="header-logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
     <span class="header-title">Threat Analysis Dashboard</span>
   </div>
   <div class="header-right">
@@ -776,28 +776,28 @@ tr:hover td {
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Emails Scanned</span>
-        <div class="stat-card-icon blue">📧</div>
+        <div class="stat-card-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
       </div>
       <div class="stat-card-value blue" id="statEmails">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">URLs Crawled</span>
-        <div class="stat-card-icon purple">🔗</div>
+        <div class="stat-card-icon purple"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
       </div>
       <div class="stat-card-value" style="color:var(--purple)" id="statUrls">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Successful</span>
-        <div class="stat-card-icon green">✓</div>
+        <div class="stat-card-icon green"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
       <div class="stat-card-value green" id="statSuccess">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Errors</span>
-        <div class="stat-card-icon red">✗</div>
+        <div class="stat-card-icon red"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
       </div>
       <div class="stat-card-value red" id="statErrors">0</div>
     </div>
@@ -808,28 +808,28 @@ tr:hover td {
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Blocked</span>
-        <div class="stat-card-icon red">🚫</div>
+        <div class="stat-card-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>
       </div>
       <div class="stat-card-value red" id="statBlocked">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Quarantined</span>
-        <div class="stat-card-icon orange">⚠️</div>
+        <div class="stat-card-icon orange"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       </div>
       <div class="stat-card-value" style="color:var(--orange)" id="statQuarantine">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Review</span>
-        <div class="stat-card-icon blue">🔍</div>
+        <div class="stat-card-icon blue"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
       </div>
       <div class="stat-card-value" style="color:var(--info)" id="statReview">0</div>
     </div>
     <div class="stat-card fade-in">
       <div class="stat-card-header">
         <span class="stat-card-label">Passed</span>
-        <div class="stat-card-icon green">✅</div>
+        <div class="stat-card-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
       </div>
       <div class="stat-card-value green" id="statPassed">0</div>
     </div>
@@ -837,9 +837,9 @@ tr:hover td {
 
   <!-- Tabs -->
   <div class="tabs" id="tabs" style="display:none;">
-    <button class="tab active" onclick="switchTab('emails', this)">📧 Emails</button>
-    <button class="tab" onclick="switchTab('urls', this)">🔗 URLs</button>
-    <button class="tab" onclick="switchTab('threat', this)">🛡️ Threats</button>
+    <button class="tab active" onclick="switchTab('emails', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> Emails</button>
+    <button class="tab" onclick="switchTab('urls', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg> URLs</button>
+    <button class="tab" onclick="switchTab('threat', this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Threats</button>
   </div>
 
   <!-- Email Table -->
@@ -870,12 +870,12 @@ tr:hover td {
       <span class="table-badge" id="urlCount"></span>
     </div>
     <div class="summary-row">
-      <div class="summary-item">✅ Success: <span class="summary-count" style="color:var(--success)" id="urlOk">0</span></div>
-      <div class="summary-item">🔀 Redirects: <span class="summary-count" style="color:var(--warning)" id="urlRedirects">0</span></div>
-      <div class="summary-item">❌ Errors: <span class="summary-count" style="color:var(--danger)" id="urlErrors">0</span></div>
-      <div class="summary-item">📄 PDFs: <span class="summary-count" style="color:var(--cyan)" id="urlPdfs">0</span></div>
-      <div class="summary-item">⬇️ Downloads: <span class="summary-count" style="color:var(--orange)" id="urlDownloads">0</span></div>
-      <div class="summary-item">⏱️ Avg: <span class="summary-count" id="urlAvgTime">0</span>ms</div>
+      <div class="summary-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Success: <span class="summary-count" style="color:var(--success)" id="urlOk">0</span></div>
+      <div class="summary-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg> Redirects: <span class="summary-count" style="color:var(--warning)" id="urlRedirects">0</span></div>
+      <div class="summary-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Errors: <span class="summary-count" style="color:var(--danger)" id="urlErrors">0</span></div>
+      <div class="summary-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg> PDFs: <span class="summary-count" style="color:var(--cyan)" id="urlPdfs">0</span></div>
+      <div class="summary-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg> Downloads: <span class="summary-count" style="color:var(--orange)" id="urlDownloads">0</span></div>
+      <div class="summary-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Avg: <span class="summary-count" id="urlAvgTime">0</span>ms</div>
     </div>
     <div class="table-scroll">
       <table>
@@ -888,7 +888,7 @@ tr:hover td {
             <th>Type</th>
             <th>JS</th>
             <th>CSS</th>
-            <th>🍪</th>
+            <th><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/><circle cx="10" cy="15" r="1.5" fill="currentColor"/><circle cx="14" cy="14" r="1.5" fill="currentColor"/></svg></th>
             <th>Scroll</th>
             <th>Time On Page</th>
             <th>Details</th>
@@ -928,7 +928,7 @@ tr:hover td {
 
   <!-- Empty state -->
   <div class="empty-state" id="emptyState">
-    <div class="empty-state-icon">🔍</div>
+    <div class="empty-state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
     <h3>No Scan Data</h3>
     <p>Configure your email settings in the sidebar and start a scan to analyze threats and crawl URLs.</p>
   </div>
@@ -971,7 +971,7 @@ async function startScan() {
   const btn = document.getElementById('startBtn');
   btn.disabled = true;
   btn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" ><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
     Scanning...
   `;
   document.querySelector('.spin').style.animation = 'spin 1s linear infinite';
@@ -1025,7 +1025,7 @@ async function startScan() {
     running = false;
     btn.disabled = false;
     btn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
       Start Scan
     `;
   }
@@ -1093,11 +1093,11 @@ function renderResults(data) {
       const idx = urls.indexOf(u) + 1;
       const sc = u.status_code;
       const scClass = (sc >= 200 && sc < 300) ? 'pass' : (sc >= 300 && sc < 400) ? 'review' : 'block';
-      const typeIcons = [u.is_pdf ? '📄' : '', u.is_download ? '⬇' : ''].filter(Boolean).join(' ') || '📄';
-      const errorDetail = u.error ? `<span style="color:var(--danger);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--warning);font-size:11px;">${u.redirects.length} redirect${u.redirects.length !== 1 ? 's' : ''}</span>` : '✓');
+      const typeIcons = [u.is_pdf ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>' : '', u.is_download ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>' : ''].filter(Boolean).join(' ') || '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>';
+      const errorDetail = u.error ? `<span style="color:var(--danger);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--warning);font-size:11px;">${u.redirects.length} redirect${u.redirects.length !== 1 ? 's' : ''}</span>` : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>');
 
-      const jsIcon = u.js_executed ? '<span style="color:var(--success);">⚡</span>' : '<span style="color:var(--text-muted);">⚡—</span>';
-      const cssIcon = u.css_loaded ? '<span style="color:var(--success);">🎨</span>' : '<span style="color:var(--text-muted);">🎨—</span>';
+      const jsIcon = u.js_executed ? '<span style="color:var(--success);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></span>' : '<span style="color:var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg>—</span>';
+      const cssIcon = u.css_loaded ? '<span style="color:var(--success);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span>' : '<span style="color:var(--text-muted);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>—</span>';
       const cookieIcon = u.cookies_set > 0 ? `<span style="color:var(--cyan);">${u.cookies_set}</span>` : '<span style="color:var(--text-muted);">0</span>';
       const scrollIcon = u.scroll_depth > 0 ? `<span style="color:var(--warning);">${u.scroll_depth}%</span>` : '<span style="color:var(--text-muted);">0%</span>';
       const timeIcon = u.time_on_page_ms > 0 ? `${(u.time_on_page_ms / 1000).toFixed(1)}s` : '—';
