@@ -169,11 +169,34 @@ class EmailCrawler:
 
     def fetch_emails(self) -> List[EmailMessage]:
         conn = self.connect()
-        select_status, select_data = conn.select(self.folder, readonly=True)
-        logger.info("Selected folder: %s (status=%s, exists=%s)", self.folder, select_status, select_data)
+        # Try the folder as-is first, then try common alternatives
+        folder = self.folder
+        if folder == 'INBOX':
+            # Gmail sometimes needs '[Gmail]/INBOX'
+            try_alt = False
+        else:
+            try_alt = True
+        
+        select_status, select_data = conn.select(folder, readonly=True)
+        logger.info("Selected folder: %s (status=%s, exists=%s)", folder, select_status, select_data)
+        
+        # If INBOX failed, try [Gmail]/INBOX
+        if select_status != 'OK' or not select_data or select_data == [b'0']:
+            if folder == 'INBOX':
+                alt_folder = '[Gmail]/INBOX'
+                logger.info("INBOX not found, trying %s", alt_folder)
+                select_status, select_data = conn.select(alt_folder, readonly=True)
+                logger.info("Selected folder: %s (status=%s, exists=%s)", alt_folder, select_status, select_data)
+                if select_status != 'OK':
+                    logger.warning("Cannot select folder: %s", select_status)
+                    conn.logout()
+                    return []
+            else:
+                logger.warning("Cannot select folder: %s", select_status)
+                conn.logout()
+                return []
 
         if self.seen_marker:
-            # Use FLAGS-based search for reliable unseen detection
             criterion = 'UNSEEN'
         else:
             criterion = 'ALL'

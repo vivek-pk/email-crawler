@@ -971,10 +971,13 @@ tr:hover td {
   <div class="log-panel" id="logPanel"></div>
 
   <!-- Empty state -->
-  <div class="empty-state" id="emptyState">
-    <div class="empty-state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></div>
-    <h3>No Scan Data</h3>
-    <p>Configure your email settings in the sidebar and start a scan to analyze threats and crawl URLs.</p>
+  <div class="empty-state" id="emptyState" style="display:none;">
+    <div class="empty-state-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+    </div>
+    <h3 id="emptyTitle">No Scan Data</h3>
+    <p id="emptyText">Configure your email settings in the sidebar and start a scan to analyze threats and crawl URLs.</p>
+    <button class="btn btn-secondary" style="max-width:300px;margin:16px auto 0;" onclick="showErrorDetails()">Show Details</button>
   </div>
 </div>
 
@@ -1063,6 +1066,15 @@ async function startScan() {
     }
 
     scanData = await resp.json();
+    if (scanData.error) {
+      addLog('Server error: ' + scanData.error, 'error');
+      setStatus('Error', 'error');
+      // Show error in empty state
+      document.getElementById('emptyState').style.display = 'block';
+      document.querySelector('.empty-state h3').textContent = 'Scan Error';
+      document.querySelector('.empty-state p').textContent = scanData.error;
+      return;
+    }
     addLog('Scan complete!', 'success');
     setStatus('Scan complete', 'idle');
     setProgress(100, 'Done');
@@ -1085,7 +1097,16 @@ function renderResults(data) {
   const urls = data.urls || [];
   const threat = data.threat_analysis || [];
 
-  document.getElementById('emptyState').style.display = 'none';
+  if (emails.length === 0 && urls.length === 0 && !scanData.error) {
+      // Show empty state when no emails found
+      document.getElementById('emptyState').style.display = 'block';
+      document.querySelector('.empty-state').classList.add('fade-in');
+      document.querySelector('.empty-state h3').textContent = 'No Emails Found';
+      
+      // Show hint if available
+      const hint = scanData.folder_hint || 'The inbox appears empty, or the folder might not exist. Check your folder name and credentials.';
+      document.querySelector('.empty-state p').textContent = hint;
+    }
 
   if (urls.length > 0 || emails.length > 0) {
     document.getElementById('statsGrid').style.display = 'grid';
@@ -1220,6 +1241,21 @@ function exportJSON() {
 function escapeHtml(s) {
   if (!s) return '';
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showErrorDetails() {
+  if (scanData && scanData.error) {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-secondary);border:1px solid var(--danger);padding:20px;border-radius:12px;max-width:500px;z-index:1000;box-shadow:0 10px 40px rgba(0,0,0,0.5);';
+    div.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <h4 style="color:var(--danger);margin:0;font-size:14px;">Error Details</h4>
+        <button onclick="this.parentElement.parentElement.remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:18px;">&times;</button>
+      </div>
+      <pre style="background:var(--bg-tertiary);padding:12px;border-radius:8px;max-height:300px;overflow:auto;font-size:12px;color:var(--danger);margin:0;white-space:pre-wrap;word-break:break-all;">${escapeHtml(scanData.error)}</pre>
+    `;
+    document.body.appendChild(div);
+  }
 }
 </script>
 </body>

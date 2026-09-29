@@ -182,14 +182,23 @@ def run_scan_logic(params: dict) -> dict:
         )
         emails = email_crawler.fetch_emails()
         logging.getLogger().info(f"=== Fetched {len(emails)} email(s) via IMAP ===")
+        
+        # Check if we got 0 emails
+        if not emails and mode in ('full', 'crawl'):
+            logging.getLogger().info("=== WARNING: 0 emails fetched. Check folder name or credentials. ===")
     except Exception as e:
+        import traceback
+        logging.getLogger().error(f"=== IMAP Error: {str(e)} ===")
+        logging.getLogger().error(traceback.format_exc())
         results['error'] = f'Failed to connect to IMAP: {str(e)}'
         return results
 
     if not emails:
+        # Return a hint to the user
         results['emails'] = []
         results['urls'] = []
         results['threat_analysis'] = []
+        results['folder_hint'] = f"0 emails found in '{folder}'. Try '[Gmail]/INBOX' for Gmail, or check folder name."
         return results
 
     results['emails'] = [{
