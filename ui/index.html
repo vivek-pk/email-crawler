@@ -391,6 +391,11 @@
             <th>Time</th>
             <th>Title</th>
             <th>Type</th>
+            <th>JS</th>
+            <th>CSS</th>
+            <th>Cookies</th>
+            <th>Scroll</th>
+            <th>Time On Page</th>
             <th>Error / Details</th>
             <th>URL</th>
           </tr>
@@ -596,6 +601,14 @@ function renderResults(data) {
       const scClass = (sc >= 200 && sc < 300) ? 'pass' : (sc >= 300 && sc < 400) ? 'review' : 'block';
       const typeIcons = [u.is_pdf ? '📄' : '', u.is_download ? '⬇' : ''].filter(Boolean).join(' ') || '📄';
       const errorDetail = u.error ? `<span style="color:var(--red);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--yellow);font-size:11px;">${u.redirects.length} redirects → ${u.final_url.substring(0,80)}</span>` : '');
+
+      // Browser simulation metrics
+      const jsIcon = u.js_executed ? '<span style="color:var(--green);" title="JS executed">⚡✓</span>' : '<span style="color:var(--text2);" title="No JS detected">⚡—</span>';
+      const cssIcon = u.css_loaded ? '<span style="color:var(--green);" title="CSS loaded">🎨✓</span>' : '<span style="color:var(--text2);" title="No CSS detected">🎨—</span>';
+      const cookieIcon = u.cookies_set > 0 ? `<span style="color:var(--cyan);" title="Cookies set">${u.cookies_set}</span>` : '<span style="color:var(--text2);">0</span>';
+      const scrollIcon = u.scroll_depth > 0 ? `<span style="color:var(--yellow);">${u.scroll_depth}%</span>` : '<span style="color:var(--text2);">0%</span>';
+      const timeIcon = u.time_on_page_ms > 0 ? `${(u.time_on_page_ms / 1000).toFixed(1)}s` : '—';
+
       return `
         <tr>
           <td style="color:var(--text2);">${idx}</td>
@@ -603,6 +616,11 @@ function renderResults(data) {
           <td style="font-size:12px;">${u.response_time_ms.toFixed(0)}ms</td>
           <td style="max-width:200px;font-size:12px;color:var(--text2);">${escapeHtml(u.title || '—')}</td>
           <td style="text-align:center;font-size:14px;">${typeIcons}</td>
+          <td style="text-align:center;">${jsIcon}</td>
+          <td style="text-align:center;">${cssIcon}</td>
+          <td style="text-align:center;font-size:12px;">${cookieIcon}</td>
+          <td style="text-align:center;font-size:12px;">${scrollIcon}</td>
+          <td style="font-size:12px;">${timeIcon}</td>
           <td style="font-size:11px;max-width:250px;">${errorDetail || '✓ Crawled'}</td>
           <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 100))}${u.url.length > 100 ? '...' : ''}</a></td>
         </tr>

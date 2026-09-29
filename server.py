@@ -262,6 +262,12 @@ def run_scan_logic(params: dict) -> dict:
                 'links_on_page': r.links_on_page,
                 'is_pdf': r.is_pdf,
                 'is_download': r.is_download,
+                'js_executed': r.js_executed,
+                'css_loaded': r.css_loaded,
+                'cookies_set': r.cookies_set,
+                'time_on_page_ms': r.time_on_page_ms,
+                'scroll_depth': r.scroll_depth,
+                'has_dynamic_content': r.has_dynamic_content,
             } for r in url_results]
 
     return results

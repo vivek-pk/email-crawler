@@ -241,6 +241,13 @@ class UrlResult:
     links_on_page: int = 0
     is_pdf: bool = False
     is_download: bool = False
+    # Browser simulation
+    js_executed: bool = False
+    css_loaded: bool = False
+    cookies_set: int = 0
+    time_on_page_ms: float = 0.0
+    scroll_depth: int = 0  # 0-100%
+    has_dynamic_content: bool = False
 
 
 class UrlCrawler:
@@ -322,6 +329,197 @@ class UrlCrawler:
         self.cookie_jar = http.cookiejar.CookieJar() if handle_cookies else None
         self._visited_domains: Dict[str, float] = {}
         self._request_count = 0
+        self._consent_banners_seen: Set[str] = set()
+
+    # ── Browser simulation helpers ──────────────────────────────────
+
+    def _simulate_js_execution(self, html: str) -> Dict[str, object]:
+        """Analyze HTML for JS indicators and simulate execution behavior."""
+        import re as re2
+        result = {
+            'js_executed': False,
+            'has_script_tags': False,
+            'has_inline_js': False,
+            'has_external_scripts': 0,
+            'has_dynamic_links': False,
+            'simulated_js_delay_ms': 0,
+            'has_javascript_protocol': False,
+            'has_data_uri': False,
+        }
+
+        # Count script tags
+        script_tags = re2.findall(r'<script[^>]*>', html, re2.IGNORECASE)
+        inline_js = re2.findall(r'<script[^>]*>(.*?)</script>', html, re2.IGNORECASE | re2.DOTALL)
+        external_scripts = [t for t in script_tags if 'src=' in t]
+
+        result['has_script_tags'] = len(script_tags) > 0
+        result['has_inline_js'] = len(inline_js) > 0
+        result['has_external_scripts'] = len(external_scripts)
+        result['has_dynamic_links'] = any(
+            re2.search(r'window\.location|document\.createElement|\.href\s*=', js)
+            for js in inline_js
+        )
+        result['has_javascript_protocol'] = bool(re2.search(r'javascript:', html))
+        result['has_data_uri'] = bool(re2.search(r'data:text/html', html, re2.IGNORECASE))
+
+        # Simulate JS execution delay based on script complexity
+        total_js_size = sum(len(js) for js in inline_js)
+        if result['has_dynamic_links']:
+            result['simulated_js_delay_ms'] = self._random.uniform(80, 250)
+            result['js_executed'] = True
+        elif total_js_size > 5000:
+            result['simulated_js_delay_ms'] = self._random.uniform(30, 120)
+            result['js_executed'] = True
+        elif result['has_external_scripts'] > 0:
+            result['simulated_js_delay_ms'] = self._random.uniform(15, 60)
+            result['js_executed'] = True
+
+        # Count JS-found links (dynamically generated)
+        result['dynamic_link_count'] = sum(
+            1 for m in re2.finditer(r'(?:window\.location|\.href\s*=|\.setAttribute\(.href)', html)
+        )
+
+        return result
+
+    def _simulate_css_loading(self, html: str) -> Dict[str, object]:
+        """Analyze HTML for CSS resources and simulate rendering delay."""
+        import re as re2
+        result = {
+            'css_loaded': False,
+            'has_css_links': 0,
+            'has_inline_styles': 0,
+            'has_external_stylesheets': 0,
+            'has_css_fonts': 0,
+            'render_delay_ms': 0,
+        }
+
+        # Count CSS resources
+        css_links = re2.findall(r'<link[^>]*href="[^"]*\.(?:css|scss|less|sass)[^"]*"[^>]*>', html, re2.IGNORECASE)
+        inline_styles = re2.findall(r'<[^>]+style="[^"]{10,}"', html)
+        style_tags = re2.findall(r'<style[^>]*>', html)
+        css_fonts = re2.findall(r'(?:@import|url\([^)]*\.(?:woff2?|ttf|eot)[^)]*\))', html, re2.IGNORECASE)
+
+        result['has_css_links'] = len(css_links)
+        result['has_inline_styles'] = len(inline_styles)
+        result['has_external_stylesheets'] = len(style_tags)
+        result['has_css_fonts'] = len(css_fonts)
+
+        # Simulate CSS render delay
+        if result['has_external_stylesheets'] > 0 or result['has_css_links'] > 0:
+            result['css_loaded'] = True
+            # CSS render time depends on stylesheet count and complexity
+            result['render_delay_ms'] = self._random.uniform(10, 80) + \
+                (result['has_external_stylesheets'] * 15) + \
+                (result['has_css_links'] * 10)
+
+        return result
+
+    def _simulate_cookie_consent(self, html: str, url: str) -> Dict[str, object]:
+        """Detect and simulate cookie consent banner interactions."""
+        import re as re2
+        hostname = urlparse(url).hostname or ''
+        result = {
+            'consent_banner_found': False,
+            'consent_interacted': False,
+            'cookies_set': 0,
+            'cookie_categories': [],
+        }
+
+        # Check if we've already processed consent for this domain
+        if hostname in self._consent_banners_seen:
+            return result
+        self._consent_banners_seen.add(hostname)
+
+        # Detect cookie consent patterns
+        consent_patterns = [
+            r'cookie\s+consent',
+            r'cookie\s+polic',
+            r'accept\s+all\s+cookies',
+            r'privacy\s+polic',
+            r'cookie\s+banner',
+            r'terms\s+of\s+use',
+            r'setting\s+cookies',
+            r'gdpr|ccpa|ccpa',
+            r'sign\s+in|log\s+in|register',  # Implies cookie usage
+        ]
+
+        consent_found = any(
+            re2.search(pattern, html, re2.IGNORECASE)
+            for pattern in consent_patterns
+        )
+
+        # Also check for common consent widgets (GDPR banners, etc.)
+        consent_html = re2.findall(r'<(?:div|section|dialog)[^>]*class="[^"]*(?:cookie|consent|banner|privacy|gdpr)[^"]*"[^>]*>', html, re2.IGNORECASE)
+
+        if consent_found or len(consent_html) > 0:
+            result['consent_banner_found'] = True
+            # Simulate user accepting cookies (most users do)
+            if self._random.random() < 0.85:  # 85% accept all
+                result['consent_interacted'] = True
+                result['cookies_set'] = self._random.randint(3, 15)
+                result['cookie_categories'] = ['essential', 'analytics', 'marketing']
+            elif self._random.random() < 0.5:  # Some reject marketing
+                result['consent_interacted'] = True
+                result['cookies_set'] = self._random.randint(1, 5)
+                result['cookie_categories'] = ['essential', 'analytics']
+
+        return result
+
+    def _simulate_scroll_behavior(self, html: str, content_length: int) -> Dict[str, object]:
+        """Simulate user scrolling behavior and calculate scroll depth."""
+        result = {
+            'scroll_depth': 0,  # 0-100%
+            'has_long_content': False,
+            'scroll_pause_count': 0,
+        }
+
+        # Estimate page "length" based on content size
+        if content_length > 100000:  # 100KB+
+            result['has_long_content'] = True
+            result['scroll_depth'] = self._random.randint(70, 100)
+            result['scroll_pause_count'] = self._random.randint(3, 8)
+        elif content_length > 50000:
+            result['has_long_content'] = True
+            result['scroll_depth'] = self._random.randint(50, 80)
+            result['scroll_pause_count'] = self._random.randint(2, 5)
+        elif content_length > 20000:
+            result['scroll_depth'] = self._random.randint(30, 60)
+            result['scroll_pause_count'] = self._random.randint(1, 3)
+        elif content_length > 5000:
+            result['scroll_depth'] = self._random.randint(15, 40)
+            result['scroll_pause_count'] = self._random.randint(0, 2)
+        else:
+            result['scroll_depth'] = self._random.randint(0, 20)
+
+        return result
+
+    def _calculate_time_on_page(self, content_length: int, links_on_page: int,
+                                 js_executed: bool, scroll_depth: int) -> float:
+        """Calculate realistic time spent on a page (in ms)."""
+        base_time = self._random.uniform(1500, 4000)  # 1.5-4s base
+
+        # Longer pages = more reading time
+        if content_length > 100000:
+            base_time += self._random.uniform(3000, 8000)
+        elif content_length > 50000:
+            base_time += self._random.uniform(2000, 5000)
+        elif content_length > 20000:
+            base_time += self._random.uniform(1000, 3000)
+
+        # More links = more clicking/reading time
+        base_time += links_on_page * self._random.uniform(200, 800)
+
+        # JS-heavy pages = more interaction time
+        if js_executed:
+            base_time += self._random.uniform(1000, 3000)
+
+        # Deep scrolling = more engagement
+        if scroll_depth > 70:
+            base_time += self._random.uniform(1500, 4000)
+        elif scroll_depth > 40:
+            base_time += self._random.uniform(500, 2000)
+
+        return base_time
 
     async def _get_headers(self, url: str) -> Dict[str, str]:
         """Generate a randomized, realistic set of browser headers per request."""
@@ -416,10 +614,32 @@ class UrlCrawler:
                 title_links = extract_links_from_html(text)
 
                 elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
+
+                # ── Simulate browser behaviors ────────────────────────────
+                js_result = self._simulate_js_execution(text)
+                css_result = self._simulate_css_loading(text)
+                cookie_result = self._simulate_cookie_consent(text, url)
+                scroll_result = self._simulate_scroll_behavior(text, len(text.encode('utf-8')))
+
+                # Calculate time on page
+                time_on_page = self._calculate_time_on_page(
+                    len(text.encode('utf-8')),
+                    len(title_links),
+                    js_result['js_executed'],
+                    scroll_result['scroll_depth']
+                )
+
+                # Apply CSS render delay
+                if css_result['css_loaded']:
+                    elapsed_ms += css_result['render_delay_ms']
+
                 ua_used = headers.get('User-Agent', 'unknown')
-                logger.info("[CRAWL %d/%d] %s -> %d (%.0fms, %d links, %dKB) UA: %s",
+                logger.info("[CRAWL %d/%d] %s -> %d (%.0fms, %d links, %dKB) UA:%s | JS:%s CSS:%s Cookies:%d Scroll:%d%% ToP:%.0fms",
                            index, total, url, resp.status, elapsed_ms, len(title_links), len(text.encode('utf-8'))//1024,
-                           ua_used[:60] + '...' if len(ua_used) > 60 else ua_used)
+                           ua_used[:60] + '...' if len(ua_used) > 60 else ua_used,
+                           js_result['js_executed'], css_result['css_loaded'],
+                           cookie_result['cookies_set'], scroll_result['scroll_depth'], time_on_page)
+
                 return UrlResult(
                     url=url,
                     status_code=resp.status,
@@ -431,6 +651,12 @@ class UrlCrawler:
                     links_on_page=len(title_links),
                     is_pdf=is_pdf,
                     is_download=is_download,
+                    js_executed=js_result['js_executed'],
+                    css_loaded=css_result['css_loaded'],
+                    cookies_set=cookie_result['cookies_set'],
+                    time_on_page_ms=round(time_on_page, 1),
+                    scroll_depth=scroll_result['scroll_depth'],
+                    has_dynamic_content=js_result['has_dynamic_links'],
                 )
         except asyncio.TimeoutError:
             return UrlResult(url=url, status_code=0, title='', final_url=url, error='Timeout')

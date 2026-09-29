@@ -22,6 +22,20 @@ Scans emails from any IMAP inbox, extracts all URLs, crawls them, and runs a **q
 - Detects PDFs, file downloads, redirects
 - Browser-identical User-Agent (Chrome 109 on Windows)
 
+### Browser Simulation
+Mimics real browser behavior for each crawled URL:
+
+| Feature | Description |
+|---|---|
+| **JS Execution** | Detects script tags, inline JavaScript, dynamic link generation; simulates execution time |
+| **CSS Loading** | Detects stylesheets, inline styles, web fonts; simulates render delay |
+| **Cookie Consent** | Detects GDPR/cookie banners; simulates user accepting cookies (85% chance) |
+| **Time on Page** | Calculates realistic dwell time based on content size, link density, JS complexity, scroll depth |
+| **Scroll Behavior** | Simulates user scrolling (0-100% depth) based on page length |
+| **Dynamic Content** | Detects pages that generate links via JavaScript |
+
+Each URL in results includes: `js_executed`, `css_loaded`, `cookies_set`, `time_on_page_ms`, `scroll_depth`, `has_dynamic_content`
+
 ### Quarantine / Threat Analysis
 Simulates an email security gateway with multi-layer scoring:
 
