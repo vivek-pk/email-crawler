@@ -3,362 +3,857 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Email Link Crawler — Quarantine Analyzer</title>
+<title>Email Crawler Pro — Threat Analysis Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0f1117;
-    --bg2: #1a1d27;
-    --bg3: #242836;
-    --border: #2e3348;
-    --text: #e2e4ed;
-    --text2: #9498ae;
-    --accent: #6c72ff;
-    --accent2: #5056e0;
-    --green: #34d399;
-    --yellow: #fbbf24;
-    --orange: #fb923c;
-    --red: #f87171;
-    --cyan: #22d3ee;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --bg-card: #161e2f;
+  --bg-card-hover: #1a2540;
+  --border-color: #2a3550;
+  --border-light: #374560;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-primary: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-glow: rgba(99, 102, 241, 0.15);
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+  --cyan: #06b6d4;
+  --purple: #a855f7;
+  --orange: #f97316;
+}
 
-  /* Sidebar */
-  .sidebar {
-    position: fixed; left: 0; top: 0; bottom: 0;
-    width: 280px; background: var(--bg2); border-right: 1px solid var(--border);
-    padding: 24px 20px; overflow-y: auto; z-index: 100;
-  }
-  .sidebar h1 {
-    font-size: 16px; font-weight: 700; color: var(--accent);
-    margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
-  }
-  .sidebar h1 .icon { font-size: 20px; }
-  .sidebar .subtitle { font-size: 11px; color: var(--text2); margin-bottom: 24px; }
-  .sidebar section { margin-bottom: 20px; }
-  .sidebar label {
-    display: block; font-size: 11px; font-weight: 600;
-    color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-  .sidebar input, .sidebar select {
-    width: 100%; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 6px; color: var(--text); font-size: 13px; margin-bottom: 10px;
-    outline: none; transition: border-color 0.2s;
-  }
-  .sidebar input:focus, .sidebar select:focus { border-color: var(--accent); }
-  .sidebar .checkbox-row {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
-    font-size: 13px; color: var(--text2); cursor: pointer;
-  }
-  .sidebar .checkbox-row input[type="checkbox"] {
-    width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
-  }
-  .btn-primary {
-    width: 100%; padding: 10px; background: var(--accent); color: #fff;
-    border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
-    cursor: pointer; transition: background 0.2s; margin-top: 4px;
-  }
-  .btn-primary:hover { background: var(--accent2); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-secondary {
-    width: 100%; padding: 10px; background: var(--bg3); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px; font-size: 13px;
-    cursor: pointer; transition: all 0.2s; margin-top: 8px;
-  }
-  .btn-secondary:hover { border-color: var(--accent); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-  /* Main content */
-  .main { margin-left: 280px; padding: 32px 40px; min-height: 100vh; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-  /* Status bar */
-  .status-bar {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
-    margin-bottom: 24px; font-size: 13px;
-  }
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%; background: var(--text2);
-  }
-  .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
-  .status-dot.error { background: var(--red); box-shadow: 0 0 8px var(--red); }
-  .status-dot.idle { background: var(--accent); }
+/* Background gradient */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
 
-  /* Cards */
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
-  .card {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 16px 20px;
-  }
-  .card .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
-  .card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
-  .card .value.green { color: var(--green); }
-  .card .value.yellow { color: var(--yellow); }
-  .card .value.red { color: var(--red); }
-  .card .value.blue { color: var(--cyan); }
+/* Header */
+.header {
+  position: fixed; top: 0; left: 260px; right: 0; height: 64px;
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px; z-index: 50;
+}
 
-  /* Tables */
-  .table-container {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
-    overflow: hidden; margin-bottom: 24px;
-  }
-  .table-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 14px 20px; border-bottom: 1px solid var(--border);
-  }
-  .table-header h3 { font-size: 14px; font-weight: 600; }
-  .table-scroll { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    text-align: left; padding: 10px 16px; background: var(--bg3);
-    color: var(--text2); font-weight: 600; font-size: 11px;
-    text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
-  }
-  td {
-    padding: 10px 16px; border-top: 1px solid var(--border);
-    vertical-align: top;
-  }
-  tr:hover td { background: rgba(108, 114, 255, 0.03); }
-  .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 4px;
-    font-size: 11px; font-weight: 600; text-transform: uppercase;
-  }
-  .badge-pass { background: rgba(52, 211, 153, 0.15); color: var(--green); }
-  .badge-review { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
-  .badge-quarantine { background: rgba(251, 146, 60, 0.15); color: var(--orange); }
-  .badge-block { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+.header-left {
+  display: flex; align-items: center; gap: 12px;
+}
 
-  .score-bar {
-    width: 80px; height: 6px; background: var(--bg3); border-radius: 3px;
-    overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 8px;
-  }
-  .score-bar-fill {
-    height: 100%; border-radius: 3px; transition: width 0.3s;
-  }
-  .link-cell { max-width: 350px; }
-  .link-cell a {
-    color: var(--accent); text-decoration: none; word-break: break-all;
-  }
-  .link-cell a:hover { text-decoration: underline; }
+.header-logo {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--purple));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: white;
+}
 
-  /* Progress */
-  .progress-bar {
-    width: 100%; height: 4px; background: var(--bg3); border-radius: 2px;
-    margin: 8px 0; overflow: hidden; display: none;
-  }
-  .progress-bar .fill {
-    height: 100%; background: var(--accent); border-radius: 2px;
-    width: 0%; transition: width 0.3s;
-  }
-  .progress-bar.visible { display: block; }
-  .crawl-status {
-    font-size: 12px; color: var(--text2); margin: 8px 0;
-    padding: 8px 12px; background: var(--bg3); border-radius: 6px;
-    font-family: monospace; display: none;
-  }
-  .crawl-status.visible { display: block; }
+.header-title {
+  font-size: 15px; font-weight: 600;
+  background: linear-gradient(135deg, var(--text-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 
-  /* Logs */
-  .log-panel {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 16px; font-family: 'SF Mono', 'Fira Code', monospace;
-    font-size: 12px; max-height: 200px; overflow-y: auto; margin-bottom: 24px;
-    display: none;
-  }
-  .log-panel.visible { display: block; }
-  .log-panel .log-entry { padding: 2px 0; color: var(--text2); }
-  .log-panel .log-entry.info { color: var(--text); }
-  .log-panel .log-entry.warn { color: var(--yellow); }
-  .log-panel .log-entry.error { color: var(--red); }
-  .log-panel .log-entry.success { color: var(--green); }
+.header-right {
+  display: flex; align-items: center; gap: 16px;
+}
 
-  /* Empty state */
-  .empty-state {
-    text-align: center; padding: 60px 20px; color: var(--text2);
-  }
-  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
-  .empty-state p { font-size: 14px; }
+.header-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  font-size: 12px; color: var(--text-secondary);
+}
 
-  /* Tabs */
-  .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
-  .tab {
-    padding: 8px 16px; background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 6px; font-size: 13px; cursor: pointer; color: var(--text2);
-    transition: all 0.2s;
-  }
-  .tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .tab:hover:not(.active) { border-color: var(--accent); }
+.status-indicator {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s;
+}
 
-  /* Tooltip */
-  .tooltip-trigger {
-    position: relative; cursor: help; border-bottom: 1px dashed var(--text2);
-  }
-  .tooltip-trigger:hover::after {
-    content: attr(data-tip);
-    position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
-    background: var(--bg3); color: var(--text); padding: 6px 10px; border-radius: 6px;
-    font-size: 11px; white-space: nowrap; z-index: 10; border: 1px solid var(--border);
-  }
+.status-indicator.idle { background: var(--accent-primary); box-shadow: 0 0 8px var(--accent-primary); }
+.status-indicator.active { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+.status-indicator.error { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
 
-  /* Responsive */
-  @media (max-width: 900px) {
-    .sidebar { width: 240px; }
-    .main { margin-left: 240px; padding: 20px; }
-    .cards { grid-template-columns: repeat(2, 1fr); }
-  }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Sidebar */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 260px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  padding: 24px 20px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 32px; padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.brand-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--purple));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.brand-text h1 {
+  font-size: 15px; font-weight: 700; color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.brand-text span {
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-section {
+  margin-bottom: 28px;
+}
+
+.section-label {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 14px;
+  cursor: pointer;
+}
+
+.section-label::after {
+  content: '−';
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 11px; font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+.checkbox-group {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.checkbox-group label {
+  font-size: 13px; color: var(--text-secondary); cursor: pointer;
+  flex: 1;
+}
+
+/* Buttons */
+.btn {
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary), var(--purple));
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6; cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  margin-top: 10px;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
+/* Progress */
+.progress-container {
+  margin-top: 16px;
+}
+
+.progress-bar-wrapper {
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
+  display: none;
+}
+
+.progress-bar-wrapper.visible { display: block; }
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--purple));
+  border-radius: 2px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Main content */
+.main {
+  margin-left: 260px;
+  margin-top: 64px;
+  padding: 24px 32px;
+  min-height: calc(100vh - 64px);
+  position: relative;
+  z-index: 1;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s;
+}
+
+.stat-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-light);
+  transform: translateY(-2px);
+}
+
+.stat-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.stat-card-label {
+  font-size: 11px; font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-card-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.stat-card-icon.blue { background: var(--info-bg); color: var(--info); }
+.stat-card-icon.green { background: var(--success-bg); color: var(--success); }
+.stat-card-icon.red { background: var(--danger-bg); color: var(--danger); }
+.stat-card-icon.orange { background: var(--warning-bg); color: var(--warning); }
+
+.stat-card-value {
+  font-size: 28px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-card-value.green { color: var(--success); }
+.stat-card-value.blue { color: var(--info); }
+.stat-card-value.red { color: var(--danger); }
+.stat-card-value.orange { color: var(--warning); }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 4px;
+  margin-bottom: 20px;
+  background: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  width: fit-content;
+}
+
+.tab {
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+
+.tab:hover { color: var(--text-secondary); background: var(--bg-tertiary); }
+
+.tab.active {
+  background: var(--accent-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Table container */
+.table-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table-title {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-primary);
+}
+
+.table-badge {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.table-scroll { overflow-x: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-color);
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+tr:last-child td { border-bottom: none; }
+
+tr:hover td {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.badge-pass { background: var(--success-bg); color: var(--success); }
+.badge-review { background: var(--warning-bg); color: var(--warning); }
+.badge-quarantine { background: var(--danger-bg); color: var(--danger); }
+.badge-block { background: var(--danger-bg); color: var(--danger); border: 1px solid var(--danger); }
+
+/* Score bar */
+.score-bar {
+  width: 60px; height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Summary row */
+.summary-row {
+  display: flex; gap: 24px;
+  padding: 12px 20px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px; color: var(--text-secondary);
+}
+
+.summary-item {
+  display: flex; align-items: center; gap: 6px;
+}
+
+.summary-count {
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Links */
+.link-cell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-cell a {
+  color: var(--accent-secondary);
+  text-decoration: none;
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  transition: color 0.2s;
+}
+
+.link-cell a:hover {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+/* Logs */
+.log-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  max-height: 180px;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  display: none;
+}
+
+.log-panel.visible { display: block; }
+
+.log-panel .log-entry {
+  padding: 3px 0;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(42, 53, 80, 0.5);
+}
+
+.log-panel .log-entry:last-child { border-bottom: none; }
+.log-panel .log-entry.info { color: var(--text-secondary); }
+.log-panel .log-entry.warn { color: var(--warning); }
+.log-panel .log-entry.error { color: var(--danger); }
+.log-panel .log-entry.success { color: var(--success); }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  width: 64px; height: 64px;
+  background: var(--bg-card);
+  border: 2px dashed var(--border-color);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  margin: 0 auto 16px;
+}
+
+.empty-state h3 {
+  font-size: 16px; font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.empty-state p {
+  font-size: 13px;
+  max-width: 400px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .sidebar { width: 220px; }
+  .main { margin-left: 220px; padding: 20px; }
+  .header { left: 220px; }
+}
+
+@media (max-width: 900px) {
+  .sidebar { width: 200px; }
+  .header { left: 200px; }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* Tooltip */
+.tooltip-trigger {
+  position: relative; cursor: help;
+  color: var(--accent-secondary);
+  text-decoration: underline dotted;
+}
+
+.tooltip-trigger:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 100;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
 </style>
 </head>
 <body>
 
 <!-- Sidebar -->
 <div class="sidebar">
-  <h1><span class="icon">📧</span> Email Link Crawler</h1>
-  <div class="subtitle">Quarantine Analyzer</div>
-
-  <section>
-    <label>IMAP Server</label>
-    <input type="text" id="imapServer" value="imap.gmail.com" placeholder="imap.gmail.com">
-
-    <label>IMAP Port</label>
-    <input type="number" id="imapPort" value="993" placeholder="993">
-
-    <label>Email Address</label>
-    <input type="text" id="username" placeholder="you@gmail.com">
-
-    <label>App Password</label>
-    <input type="password" id="password" placeholder="••••••••••••">
-
-    <label>Folder</label>
-    <input type="text" id="folder" value="INBOX" placeholder="INBOX">
-  </section>
-
-  <section>
-    <label>Scan Settings</label>
-    <label class="checkbox-row">
-      <input type="checkbox" id="unseenOnly"> Only unread emails
-    </label>
-    <label>Max Emails</label>
-    <input type="number" id="maxEmails" value="20" min="1" max="500">
-
-    <label>Concurrent Crawls</label>
-    <input type="number" id="maxConcurrent" value="10" min="1" max="50">
-
-    <label>HTTP Timeout (sec)</label>
-    <input type="number" id="timeout" value="15" min="5" max="60">
-
-    <label>Request Delay Min (sec)</label>
-    <input type="number" id="delayMin" value="0.1" min="0" max="5" step="0.1">
-
-    <label>Request Delay Max (sec)</label>
-    <input type="number" id="delayMax" value="0.8" min="0" max="5" step="0.1">
-  </section>
-
-  <section>
-    <label>Analysis Mode</label>
-    <select id="mode">
-      <option value="crawl">URL Crawl Only</option>
-      <option value="threat">Threat Analysis Only</option>
-      <option value="full" selected>Full (Crawl + Threat)</option>
-      <option value="dns">DNS Auth Checks Only</option>
-    </select>
-    <label class="checkbox-row">
-      <input type="checkbox" id="noLookup"> Skip DNS lookups (fast)
-    </label>
-    <label class="checkbox-row">
-      <input type="checkbox" id="noCookies"> Disable cookie handling
-    </label>
-    <label class="checkbox-row">
-      <input type="checkbox" id="noHumanTiming" checked> Disable human-like delays (faster)
-    </label>
-    <label class="checkbox-row">
-      <input type="checkbox" id="sameUa"> Use same User-Agent for all requests
-    </label>
-  </section>
-
-  <button class="btn-primary" id="startBtn" onclick="startScan()">
-    ▶ Start Scan
-  </button>
-  <button class="btn-secondary" onclick="exportJSON()">
-    📥 Export JSON
-  </button>
-
-  <div class="progress-bar" id="progressBar">
-    <div class="fill" id="progressFill"></div>
+  <div class="brand">
+    <div class="brand-icon">🛡️</div>
+    <div class="brand-text">
+      <h1>Email Crawler Pro</h1>
+      <span>Threat Analysis Platform</span>
+    </div>
   </div>
-  <div style="font-size:11px; color:var(--text2); margin-top:6px;" id="progressText"></div>
+
+  <div class="sidebar-section">
+    <div class="section-label">Connection</div>
+    
+    <div class="form-group">
+      <label class="form-label">IMAP Server</label>
+      <input type="text" id="imapServer" class="form-input" value="imap.gmail.com" placeholder="imap.gmail.com">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">IMAP Port</label>
+      <input type="number" id="imapPort" class="form-input" value="993">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email Address</label>
+      <input type="email" id="username" class="form-input" placeholder="you@gmail.com">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">App Password</label>
+      <input type="password" id="password" class="form-input" placeholder="••••••••••••">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Folder</label>
+      <input type="text" id="folder" class="form-input" value="INBOX">
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="section-label">Scan Configuration</div>
+    
+    <div class="checkbox-group">
+      <input type="checkbox" id="unseenOnly">
+      <label for="unseenOnly">Only unread emails</label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Max Emails</label>
+      <input type="number" id="maxEmails" class="form-input" value="20" min="1" max="500">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Concurrent Crawls</label>
+      <input type="number" id="maxConcurrent" class="form-input" value="10" min="1" max="50">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">HTTP Timeout (sec)</label>
+      <input type="number" id="timeout" class="form-input" value="15" min="5" max="60">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Delay Min (sec)</label>
+      <input type="number" id="delayMin" class="form-input" value="0.1" min="0" max="5" step="0.1">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Delay Max (sec)</label>
+      <input type="number" id="delayMax" class="form-input" value="0.8" min="0" max="5" step="0.1">
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="section-label">Analysis Settings</div>
+    
+    <div class="form-group">
+      <label class="form-label">Mode</label>
+      <select id="mode" class="form-input">
+        <option value="crawl">URL Crawl Only</option>
+        <option value="threat">Threat Analysis</option>
+        <option value="full" selected>Full Scan</option>
+        <option value="dns">DNS Auth Only</option>
+      </select>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="noLookup">
+      <label for="noLookup">Skip DNS lookups</label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="noCookies">
+      <label for="noCookies">Disable cookies</label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="noHumanTiming" checked>
+      <label for="noHumanTiming">Disable human timing</label>
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="sameUa">
+      <label for="sameUa">Fixed User-Agent</label>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="startBtn" onclick="startScan()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+    Start Scan
+  </button>
+  <button class="btn btn-secondary" onclick="exportJSON()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+    Export JSON
+  </button>
+
+  <div class="progress-container">
+    <div class="progress-bar-wrapper" id="progressBar">
+      <div class="progress-bar-fill" id="progressFill"></div>
+    </div>
+    <div class="progress-text" id="progressText"></div>
+  </div>
 </div>
 
-<!-- Main -->
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">🛡️</div>
+    <span class="header-title">Threat Analysis Dashboard</span>
+  </div>
+  <div class="header-right">
+    <div class="header-status">
+      <div class="status-indicator idle" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
 <div class="main">
-  <div class="status-bar">
-    <div class="status-dot idle" id="statusDot"></div>
-    <span id="statusText">Ready — configure settings and start a scan</span>
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid" style="display:none;">
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Emails Scanned</span>
+        <div class="stat-card-icon blue">📧</div>
+      </div>
+      <div class="stat-card-value blue" id="statEmails">0</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">URLs Crawled</span>
+        <div class="stat-card-icon purple">🔗</div>
+      </div>
+      <div class="stat-card-value" style="color:var(--purple)" id="statUrls">0</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Successful</span>
+        <div class="stat-card-icon green">✓</div>
+      </div>
+      <div class="stat-card-value green" id="statSuccess">0</div>
+    </div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Errors</span>
+        <div class="stat-card-icon red">✗</div>
+      </div>
+      <div class="stat-card-value red" id="statErrors">0</div>
+    </div>
   </div>
 
-  <!-- Summary cards -->
-  <div class="cards" id="cards" style="display:none;">
-    <div class="card">
-      <div class="label">Emails Scanned</div>
-      <div class="value blue" id="cardEmails">0</div>
+  <!-- Threat Stats -->
+  <div class="stats-grid" id="threatStats" style="display:none;">
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Blocked</span>
+        <div class="stat-card-icon red">🚫</div>
+      </div>
+      <div class="stat-card-value red" id="statBlocked">0</div>
     </div>
-    <div class="card">
-      <div class="label">URLs Crawled</div>
-      <div class="value blue" id="cardUrls">0</div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Quarantined</span>
+        <div class="stat-card-icon orange">⚠️</div>
+      </div>
+      <div class="stat-card-value" style="color:var(--orange)" id="statQuarantine">0</div>
     </div>
-    <div class="card">
-      <div class="label">Successful</div>
-      <div class="value green" id="cardSuccess">0</div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Review</span>
+        <div class="stat-card-icon blue">🔍</div>
+      </div>
+      <div class="stat-card-value" style="color:var(--info)" id="statReview">0</div>
     </div>
-    <div class="card">
-      <div class="label">Errors</div>
-      <div class="value red" id="cardErrors">0</div>
-    </div>
-  </div>
-
-  <!-- Threat summary cards -->
-  <div class="cards" id="threatCards" style="display:none;">
-    <div class="card">
-      <div class="label">Blocked</div>
-      <div class="value red" id="cardBlocked">0</div>
-    </div>
-    <div class="card">
-      <div class="label">Quarantined</div>
-      <div class="value" style="color:var(--orange)" id="cardQuarantine">0</div>
-    </div>
-    <div class="card">
-      <div class="label">Need Review</div>
-      <div class="value" style="color:var(--yellow)" id="cardReview">0</div>
-    </div>
-    <div class="card">
-      <div class="label">Passed Clean</div>
-      <div class="value green" id="cardPassed">0</div>
+    <div class="stat-card fade-in">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Passed</span>
+        <div class="stat-card-icon green">✅</div>
+      </div>
+      <div class="stat-card-value green" id="statPassed">0</div>
     </div>
   </div>
 
   <!-- Tabs -->
   <div class="tabs" id="tabs" style="display:none;">
-    <div class="tab active" onclick="switchTab('emails', this)">📧 Emails</div>
-    <div class="tab" onclick="switchTab('urls', this)">🔗 URLs</div>
-    <div class="tab" onclick="switchTab('threat', this)">🛡️ Threat Analysis</div>
+    <button class="tab active" onclick="switchTab('emails', this)">📧 Emails</button>
+    <button class="tab" onclick="switchTab('urls', this)">🔗 URLs</button>
+    <button class="tab" onclick="switchTab('threat', this)">🛡️ Threats</button>
   </div>
 
-  <!-- Email table -->
+  <!-- Email Table -->
   <div class="table-container" id="tabEmails" style="display:none;">
     <div class="table-header">
-      <h3>Emails Found</h3>
-      <span style="font-size:12px;color:var(--text2);" id="emailCount"></span>
+      <span class="table-title">Email Analysis</span>
+      <span class="table-badge" id="emailCount"></span>
     </div>
     <div class="table-scroll">
       <table>
         <thead>
           <tr>
             <th>Subject</th>
-            <th>From</th>
+            <th>Sender</th>
             <th>Date</th>
             <th>Links</th>
           </tr>
@@ -368,19 +863,19 @@
     </div>
   </div>
 
-  <!-- URL table -->
+  <!-- URL Table -->
   <div class="table-container" id="tabUrls" style="display:none;">
     <div class="table-header">
-      <h3>URL Crawl Results — Each row proves the link was actually visited</h3>
-      <span style="font-size:12px;color:var(--text2);" id="urlCount"></span>
+      <span class="table-title">URL Crawl Results</span>
+      <span class="table-badge" id="urlCount"></span>
     </div>
-    <div style="padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:20px;">
-      <span>✅ Success: <strong style="color:var(--green);" id="urlOk">0</strong></span>
-      <span>⚠️ Redirects: <strong style="color:var(--yellow);" id="urlRedirects">0</strong></span>
-      <span>❌ Errors: <strong style="color:var(--red);" id="urlErrors">0</strong></span>
-      <span>📄 PDFs: <strong style="color:var(--cyan);" id="urlPdfs">0</strong></span>
-      <span>⬇️ Downloads: <strong style="color:var(--orange);" id="urlDownloads">0</strong></span>
-      <span>⏱️ Avg time: <strong id="urlAvgTime">0</strong>ms</span>
+    <div class="summary-row">
+      <div class="summary-item">✅ Success: <span class="summary-count" style="color:var(--success)" id="urlOk">0</span></div>
+      <div class="summary-item">🔀 Redirects: <span class="summary-count" style="color:var(--warning)" id="urlRedirects">0</span></div>
+      <div class="summary-item">❌ Errors: <span class="summary-count" style="color:var(--danger)" id="urlErrors">0</span></div>
+      <div class="summary-item">📄 PDFs: <span class="summary-count" style="color:var(--cyan)" id="urlPdfs">0</span></div>
+      <div class="summary-item">⬇️ Downloads: <span class="summary-count" style="color:var(--orange)" id="urlDownloads">0</span></div>
+      <div class="summary-item">⏱️ Avg: <span class="summary-count" id="urlAvgTime">0</span>ms</div>
     </div>
     <div class="table-scroll">
       <table>
@@ -393,10 +888,10 @@
             <th>Type</th>
             <th>JS</th>
             <th>CSS</th>
-            <th>Cookies</th>
+            <th>🍪</th>
             <th>Scroll</th>
             <th>Time On Page</th>
-            <th>Error / Details</th>
+            <th>Details</th>
             <th>URL</th>
           </tr>
         </thead>
@@ -405,11 +900,11 @@
     </div>
   </div>
 
-  <!-- Threat table -->
+  <!-- Threat Table -->
   <div class="table-container" id="tabThreat" style="display:none;">
     <div class="table-header">
-      <h3>Threat Assessment</h3>
-      <span style="font-size:12px;color:var(--text2);" id="threatCount"></span>
+      <span class="table-title">Threat Assessment</span>
+      <span class="table-badge" id="threatCount"></span>
     </div>
     <div class="table-scroll">
       <table>
@@ -433,8 +928,9 @@
 
   <!-- Empty state -->
   <div class="empty-state" id="emptyState">
-    <div class="icon">📭</div>
-    <p>No data yet. Configure your email settings and click Start Scan.</p>
+    <div class="empty-state-icon">🔍</div>
+    <h3>No Scan Data</h3>
+    <p>Configure your email settings in the sidebar and start a scan to analyze threats and crawl URLs.</p>
   </div>
 </div>
 
@@ -454,7 +950,7 @@ function setProgress(pct, text) {
 function setStatus(text, type) {
   document.getElementById('statusText').textContent = text;
   const dot = document.getElementById('statusDot');
-  dot.className = 'status-dot ' + (type || 'idle');
+  dot.className = 'status-indicator ' + (type || 'idle');
 }
 
 function addLog(msg, type) {
@@ -474,9 +970,13 @@ async function startScan() {
 
   const btn = document.getElementById('startBtn');
   btn.disabled = true;
-  btn.textContent = '⏳ Scanning...';
+  btn.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="spin"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+    Scanning...
+  `;
+  document.querySelector('.spin').style.animation = 'spin 1s linear infinite';
   setStatus('Scanning in progress...', 'active');
-  setProgress(0, 'Connecting...');
+  setProgress(0, 'Initializing...');
   addLog('Starting scan...', 'info');
 
   const payload = {
@@ -520,11 +1020,14 @@ async function startScan() {
     renderResults(scanData);
   } catch (err) {
     addLog('Error: ' + err.message, 'error');
-    setStatus('Error: ' + err.message, 'error');
+    setStatus('Error', 'error');
   } finally {
     running = false;
     btn.disabled = false;
-    btn.textContent = '▶ Start Scan';
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      Start Scan
+    `;
   }
 }
 
@@ -533,51 +1036,44 @@ function renderResults(data) {
   const urls = data.urls || [];
   const threat = data.threat_analysis || [];
 
-  // Hide empty state
   document.getElementById('emptyState').style.display = 'none';
 
-  // URL cards
   if (urls.length > 0 || emails.length > 0) {
-    document.getElementById('cards').style.display = 'grid';
-    document.getElementById('cardEmails').textContent = emails.length;
-    document.getElementById('cardUrls').textContent = urls.length;
+    document.getElementById('statsGrid').style.display = 'grid';
+    document.getElementById('statEmails').textContent = emails.length;
+    document.getElementById('statUrls').textContent = urls.length;
     const ok = urls.filter(u => u.status_code >= 200 && u.status_code < 400);
-    document.getElementById('cardSuccess').textContent = ok.length;
-    document.getElementById('cardErrors').textContent = urls.length - ok.length;
+    document.getElementById('statSuccess').textContent = ok.length;
+    document.getElementById('statErrors').textContent = urls.length - ok.length;
   }
 
-  // Threat cards
   if (threat.length > 0) {
-    document.getElementById('threatCards').style.display = 'grid';
+    document.getElementById('threatStats').style.display = 'grid';
     document.getElementById('tabs').style.display = 'flex';
-    document.getElementById('cardBlocked').textContent = threat.filter(t => t.decision === 'BLOCK').length;
-    document.getElementById('cardQuarantine').textContent = threat.filter(t => t.decision === 'QUARANTINE').length;
-    document.getElementById('cardReview').textContent = threat.filter(t => t.decision === 'REVIEW').length;
-    document.getElementById('cardPassed').textContent = threat.filter(t => t.decision === 'PASS').length;
-    document.getElementById('threatCount').textContent = threat.length + ' emails analyzed';
+    document.getElementById('statBlocked').textContent = threat.filter(t => t.decision === 'BLOCK').length;
+    document.getElementById('statQuarantine').textContent = threat.filter(t => t.decision === 'QUARANTINE').length;
+    document.getElementById('statReview').textContent = threat.filter(t => t.decision === 'REVIEW').length;
+    document.getElementById('statPassed').textContent = threat.filter(t => t.decision === 'PASS').length;
+    document.getElementById('threatCount').textContent = threat.length + ' analyzed';
   }
 
-  // Email table
   if (emails.length > 0) {
     document.getElementById('tabs').style.display = 'flex';
     document.getElementById('emailCount').textContent = emails.length + ' emails';
-    const tbody = document.getElementById('emailTableBody');
-    tbody.innerHTML = emails.map(e => `
+    document.getElementById('emailTableBody').innerHTML = emails.map(e => `
       <tr>
         <td><strong>${escapeHtml(e.subject || '(no subject)')}</strong></td>
-        <td style="white-space:nowrap;">${escapeHtml(e.sender)}</td>
-        <td style="white-space:nowrap;font-size:12px;color:var(--text2);">${escapeHtml(e.date || 'N/A')}</td>
-        <td class="link-cell">${e.links.length} link(s)</td>
+        <td style="white-space:nowrap; font-size:12px;">${escapeHtml(e.sender)}</td>
+        <td style="white-space:nowrap; font-size:12px; color:var(--text-muted);">${escapeHtml(e.date || 'N/A')}</td>
+        <td><span class="badge" style="background:var(--info-bg);color:var(--info);">${e.links.length} link${e.links.length !== 1 ? 's' : ''}</span></td>
       </tr>
     `).join('');
   }
 
-  // URL table
   if (urls.length > 0) {
-    document.getElementById('urlCount').textContent = urls.length + ' URLs crawled';
+    document.getElementById('urlCount').textContent = urls.length + ' URLs';
     document.getElementById('urlTableBody').innerHTML = '';
 
-    // Calculate summary stats
     const okCount = urls.filter(u => u.status_code >= 200 && u.status_code < 400).length;
     const redirectCount = urls.filter(u => u.redirects && u.redirects.length > 0).length;
     const errorCount = urls.filter(u => !u.status_code).length;
@@ -592,76 +1088,67 @@ function renderResults(data) {
     document.getElementById('urlDownloads').textContent = dlCount;
     document.getElementById('urlAvgTime').textContent = avgTime.toFixed(0);
 
-    // Render rows — errors first so user can see problems
     const sorted = [...urls].sort((a, b) => (a.status_code ? 0 : 1) - (b.status_code ? 0 : 1));
-    const tbody = document.getElementById('urlTableBody');
-    tbody.innerHTML = sorted.map((u, i) => {
+    document.getElementById('urlTableBody').innerHTML = sorted.map((u, i) => {
       const idx = urls.indexOf(u) + 1;
       const sc = u.status_code;
       const scClass = (sc >= 200 && sc < 300) ? 'pass' : (sc >= 300 && sc < 400) ? 'review' : 'block';
       const typeIcons = [u.is_pdf ? '📄' : '', u.is_download ? '⬇' : ''].filter(Boolean).join(' ') || '📄';
-      const errorDetail = u.error ? `<span style="color:var(--red);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--yellow);font-size:11px;">${u.redirects.length} redirects → ${u.final_url.substring(0,80)}</span>` : '');
+      const errorDetail = u.error ? `<span style="color:var(--danger);font-size:11px;">${escapeHtml(u.error)}</span>` : (u.redirects ? `<span style="color:var(--warning);font-size:11px;">${u.redirects.length} redirect${u.redirects.length !== 1 ? 's' : ''}</span>` : '✓');
 
-      // Browser simulation metrics
-      const jsIcon = u.js_executed ? '<span style="color:var(--green);" title="JS executed">⚡✓</span>' : '<span style="color:var(--text2);" title="No JS detected">⚡—</span>';
-      const cssIcon = u.css_loaded ? '<span style="color:var(--green);" title="CSS loaded">🎨✓</span>' : '<span style="color:var(--text2);" title="No CSS detected">🎨—</span>';
-      const cookieIcon = u.cookies_set > 0 ? `<span style="color:var(--cyan);" title="Cookies set">${u.cookies_set}</span>` : '<span style="color:var(--text2);">0</span>';
-      const scrollIcon = u.scroll_depth > 0 ? `<span style="color:var(--yellow);">${u.scroll_depth}%</span>` : '<span style="color:var(--text2);">0%</span>';
+      const jsIcon = u.js_executed ? '<span style="color:var(--success);">⚡</span>' : '<span style="color:var(--text-muted);">⚡—</span>';
+      const cssIcon = u.css_loaded ? '<span style="color:var(--success);">🎨</span>' : '<span style="color:var(--text-muted);">🎨—</span>';
+      const cookieIcon = u.cookies_set > 0 ? `<span style="color:var(--cyan);">${u.cookies_set}</span>` : '<span style="color:var(--text-muted);">0</span>';
+      const scrollIcon = u.scroll_depth > 0 ? `<span style="color:var(--warning);">${u.scroll_depth}%</span>` : '<span style="color:var(--text-muted);">0%</span>';
       const timeIcon = u.time_on_page_ms > 0 ? `${(u.time_on_page_ms / 1000).toFixed(1)}s` : '—';
 
       return `
         <tr>
-          <td style="color:var(--text2);">${idx}</td>
+          <td style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">${idx}</td>
           <td><span class="badge badge-${scClass}">${sc || 'ERR'}</span></td>
-          <td style="font-size:12px;">${u.response_time_ms.toFixed(0)}ms</td>
-          <td style="max-width:200px;font-size:12px;color:var(--text2);">${escapeHtml(u.title || '—')}</td>
-          <td style="text-align:center;font-size:14px;">${typeIcons}</td>
+          <td style="font-size:12px;font-family:'JetBrains Mono',monospace;">${u.response_time_ms.toFixed(0)}ms</td>
+          <td style="max-width:180px;font-size:12px;color:var(--text-secondary);">${escapeHtml(u.title || '—')}</td>
+          <td style="text-align:center;">${typeIcons}</td>
           <td style="text-align:center;">${jsIcon}</td>
           <td style="text-align:center;">${cssIcon}</td>
-          <td style="text-align:center;font-size:12px;">${cookieIcon}</td>
+          <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;">${cookieIcon}</td>
           <td style="text-align:center;font-size:12px;">${scrollIcon}</td>
-          <td style="font-size:12px;">${timeIcon}</td>
-          <td style="font-size:11px;max-width:250px;">${errorDetail || '✓ Crawled'}</td>
-          <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 100))}${u.url.length > 100 ? '...' : ''}</a></td>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:12px;">${timeIcon}</td>
+          <td style="font-size:11px;max-width:200px;">${errorDetail}</td>
+          <td class="link-cell"><a href="${escapeHtml(u.url)}" target="_blank" rel="noopener">${escapeHtml(u.url.substring(0, 60))}${u.url.length > 60 ? '...' : ''}</a></td>
         </tr>
       `;
     }).join('');
   }
 
-  // Threat table
   if (threat.length > 0) {
-    const tbody = document.getElementById('threatTableBody');
-    tbody.innerHTML = threat.map(t => {
+    document.getElementById('threatTableBody').innerHTML = threat.map(t => {
       const si = t.threat_score || {};
       const score = si.score || 0;
       const risk = si.risk_level || 'N/A';
       const decision = t.decision || 'N/A';
       const factors = si.factors || [];
       const flags = factors.slice(0, 3).map(f => `<span class="tooltip-trigger" data-tip="${escapeHtml(f.detail)}">${f.factor}</span>`).join(', ');
-      const barColor = score >= 60 ? 'var(--red)' : score >= 40 ? 'var(--orange)' : score >= 20 ? 'var(--yellow)' : 'var(--green)';
+      const barColor = score >= 60 ? 'var(--danger)' : score >= 40 ? 'var(--orange)' : score >= 20 ? 'var(--warning)' : 'var(--success)';
       const riskClass = decision === 'BLOCK' ? 'block' : decision === 'QUARANTINE' ? 'quarantine' : decision === 'REVIEW' ? 'review' : 'pass';
       return `
         <tr>
-          <td style="max-width:200px;font-size:12px;">${escapeHtml(t.subject || '—').substring(0, 60)}</td>
+          <td style="max-width:180px;font-size:12px;">${escapeHtml(t.subject || '—').substring(0, 50)}</td>
           <td style="white-space:nowrap;font-size:12px;">${escapeHtml(t.from || '—')}</td>
           <td>
             <div class="score-bar"><div class="score-bar-fill" style="width:${score}%;background:${barColor};"></div></div>
-            ${score}
+            <span style="font-family:'JetBrains Mono',monospace;font-size:12px;">${score}</span>
           </td>
           <td><span style="font-size:11px;font-weight:600;color:${barColor};">${risk}</span></td>
           <td><span class="badge badge-${riskClass}">${decision}</span></td>
-          <td style="font-size:11px;max-width:250px;">${flags || 'None'}</td>
+          <td style="font-size:11px;max-width:200px;">${flags || '<span style="color:var(--success);">None</span>'}</td>
         </tr>
       `;
     }).join('');
   }
 
-  // Show first tab
   if (emails.length > 0) switchTab('emails', document.querySelector('.tab'));
-  else if (urls.length > 0) {
-    document.getElementById('tabs').style.display = 'flex';
-    switchTab('urls', document.querySelectorAll('.tab')[0]);
-  }
+  else if (urls.length > 0) switchTab('urls', document.querySelectorAll('.tab')[1]);
 }
 
 function switchTab(name, el) {
