@@ -85,7 +85,8 @@ class APIHandler(SimpleHTTPRequestHandler):
 
         # Run scan synchronously — return full results
         try:
-            result = run_scan_logic(params)
+            import asyncio
+            result = asyncio.run(run_scan_logic_async(params))
         except Exception as e:
             import traceback
             result = {'error': str(e), 'traceback': traceback.format_exc()}
@@ -115,12 +116,11 @@ class APIHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def run_scan_logic(params: dict) -> dict:
+async def run_scan_logic_async(params: dict) -> dict:
     """Execute the scanning pipeline and return results."""
     import imaplib
     import email
     from email.header import decode_header
-    import asyncio
     import re
     from html.parser import HTMLParser
     from urllib.parse import urlparse
@@ -135,7 +135,7 @@ def run_scan_logic(params: dict) -> dict:
     from main import (
         EmailCrawler, UrlCrawler, HTMLLinkExtractor,
         normalize_url, extract_links_from_text, extract_links_from_html,
-        QuarantineAnalyzer,
+        QuarantineAnalyzer, UrlResult, PlaywrightCrawler,
     )
 
     @dataclass
@@ -163,6 +163,8 @@ def run_scan_logic(params: dict) -> dict:
     max_concurrent = params.get('max_concurrent', 10)
     timeout = params.get('timeout', 15)
     mode = params.get('mode', 'full')
+    crawler_engine = params.get('crawler_engine', 'aiohttp')
+    pw_stealth = params.get('pw_stealth', True)
     no_lookup = params.get('no_lookup', False)
 
     results = {'emails': [], 'urls': [], 'threat_analysis': []}
@@ -248,22 +250,33 @@ def run_scan_logic(params: dict) -> dict:
         all_urls = list(dict.fromkeys(all_urls))
 
         if all_urls:
-            url_crawler = UrlCrawler(
-                max_concurrent=max_concurrent,
-                timeout_seconds=timeout,
-                delay_range=(params.get('delay_min', 0.1), params.get('delay_max', 0.8)),
-                randomize_headers=params.get('randomize_headers', True),
-                handle_cookies=not params.get('no_cookies', False),
-                simulate_human_timing=not params.get('no_human_timing', False),
-                rotate_user_agent=not params.get('same_user_agent', False),
-                user_agent=None,
-                simulate_js_execution=not params.get('no_js', False),
-                simulate_css_loading=not params.get('no_css', False),
-                simulate_cookie_consent=not params.get('no_cookies', False),
-                simulate_time_on_page=not params.get('no_time', False),
-                simulate_scroll=not params.get('no_scroll', False),
-            )
-            url_results = asyncio.run(url_crawler.crawl_all(all_urls))
+            import logging
+            logging.getLogger().info(f"=== Using crawler engine: {crawler_engine} ===")
+            
+            if crawler_engine == 'playwright':
+                logging.getLogger().info(f"=== [PLAYWRIGHT] Crawling {len(all_urls)} URLs with real Chromium... ===")
+                url_results = await PlaywrightCrawler(
+                    max_concurrent=max(1, max_concurrent // 2),
+                    timeout_seconds=timeout,
+                    stealth=pw_stealth,
+                ).crawl_all(all_urls)
+            else:
+                url_crawler = UrlCrawler(
+                    max_concurrent=max_concurrent,
+                    timeout_seconds=timeout,
+                    delay_range=(params.get('delay_min', 0.1), params.get('delay_max', 0.8)),
+                    randomize_headers=params.get('randomize_headers', True),
+                    handle_cookies=not params.get('no_cookies', False),
+                    simulate_human_timing=not params.get('no_human_timing', False),
+                    rotate_user_agent=not params.get('same_user_agent', False),
+                    user_agent=None,
+                    simulate_js_execution=not params.get('no_js', False),
+                    simulate_css_loading=not params.get('no_css', False),
+                    simulate_cookie_consent=not params.get('no_cookies', False),
+                    simulate_time_on_page=not params.get('no_time', False),
+                    simulate_scroll=not params.get('no_scroll', False),
+                )
+                url_results = await url_crawler.crawl_all(all_urls)
             results['urls'] = [{
                 'url': r.url,
                 'status_code': r.status_code,

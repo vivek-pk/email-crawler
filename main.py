@@ -1523,6 +1523,10 @@ def parse_args():
     parser.add_argument('--no-cookies', action='store_true', help='Disable cookie consent simulation')
     parser.add_argument('--no-time', action='store_true', help='Disable time-on-page simulation')
     parser.add_argument('--no-scroll', action='store_true', help='Disable scroll simulation')
+    # Crawler engine
+    parser.add_argument('--crawler', type=str, choices=['aiohttp', 'playwright'], default='aiohttp',
+                        help='Crawler engine: aiohttp (fast) or playwright (real browser, bypasses bot detection)')
+    parser.add_argument('--pw-stealth', action='store_true', help='Enable Playwright stealth mode')
     # Threat analysis
     parser.add_argument('--threat', '-t', action='store_true', help='Run quarantine/threat analysis')
     parser.add_argument('--analyze', '-a', action='store_true', help='Run both URL crawl + threat analysis')
@@ -1617,26 +1621,36 @@ async def main():
             format_quarantine_report(analyses)
 
             if do_crawl and all_urls:
-                # Also crawl URLs
-                url_crawler = UrlCrawler(
-                    max_concurrent=args.max_concurrent,
-                    timeout_seconds=args.timeout,
-                    max_redirects=args.max_redirects,
-                    delay_range=(args.delay_min, args.delay_max),
-                    randomize_headers=True,
-                    handle_cookies=not args.no_cookies,
-                    simulate_human_timing=not args.no_human_timing,
-                    rotate_user_agent=not args.same_ua,
-                    user_agent=args.custom_ua,
-                    simulate_js_execution=not args.no_js,
-                    simulate_css_loading=not args.no_css,
-                    simulate_cookie_consent=not args.no_cookies,
-                    simulate_time_on_page=not args.no_time,
-                    simulate_scroll=not args.no_scroll,
-                )
-                results = await url_crawler.crawl_all(all_urls)
-                # Try to merge URL results back into analyses
-                # (simplified: just print both reports)
+                # Also crawl URLs with selected engine
+                if args.crawler == 'playwright':
+                    print("\n  [PLAYWRIGHT] Launching Chromium for URL crawl...")
+                    results = []
+                    pw_results = await PlaywrightCrawler(
+                        max_concurrent=args.max_concurrent,
+                        timeout_seconds=args.timeout,
+                        stealth=args.pw_stealth,
+                    ).crawl_all(all_urls)
+                    # Convert Playwright results to UrlResult format
+                    from dataclasses import asdict
+                    results = [UrlResult(**{k: getattr(r, k) for k in UrlResult.__dataclass_fields__.keys()}) for r in pw_results]
+                else:
+                    results = await UrlCrawler(
+                        max_concurrent=args.max_concurrent,
+                        timeout_seconds=args.timeout,
+                        max_redirects=args.max_redirects,
+                        delay_range=(args.delay_min, args.delay_max),
+                        randomize_headers=True,
+                        handle_cookies=not args.no_cookies,
+                        simulate_human_timing=not args.no_human_timing,
+                        rotate_user_agent=not args.same_ua,
+                        user_agent=args.custom_ua,
+                        simulate_js_execution=not args.no_js,
+                        simulate_css_loading=not args.no_css,
+                        simulate_cookie_consent=not args.no_cookies,
+                        simulate_time_on_page=not args.no_time,
+                        simulate_scroll=not args.no_scroll,
+                    ).crawl_all(all_urls)
+                
                 print("\n\n")
                 format_combined_report(emails, results, analyses)
 
@@ -1649,12 +1663,22 @@ async def main():
                     print(f"\nFull JSON report saved to: {args.output}")
         elif do_crawl and all_urls:
             # URL crawl only, no threat analysis
-            url_crawler = UrlCrawler(
-                max_concurrent=args.max_concurrent,
-                timeout_seconds=args.timeout,
-                max_redirects=args.max_redirects,
-            )
-            results = await url_crawler.crawl_all(all_urls)
+            if args.crawler == 'playwright':
+                print("\n  [PLAYWRIGHT] Launching Chromium for URL crawl...")
+                results = []
+                pw_results = await PlaywrightCrawler(
+                    max_concurrent=args.max_concurrent,
+                    timeout_seconds=args.timeout,
+                    stealth=args.pw_stealth,
+                ).crawl_all(all_urls)
+                from dataclasses import asdict
+                results = [UrlResult(**{k: getattr(r, k) for k in UrlResult.__dataclass_fields__.keys()}) for r in pw_results]
+            else:
+                results = await UrlCrawler(
+                    max_concurrent=args.max_concurrent,
+                    timeout_seconds=args.timeout,
+                    max_redirects=args.max_redirects,
+                ).crawl_all(all_urls)
             format_combined_report(emails, results, analyses if do_threat else [])
             if args.output:
                 save_json(emails, results, analyses if do_threat else [], args.output)
@@ -1678,3 +1702,169 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
+# ── Playwright Crawler ─────────────────────────────────────────
+
+@dataclass
+class PlaywrightUrlResult:
+    url: str
+    status_code: int
+    title: str
+    final_url: str
+    redirects: List[str] = field(default_factory=list)
+    error: str = ""
+    content_length: int = 0
+    response_time_ms: float = 0.0
+    links_on_page: int = 0
+    is_pdf: bool = False
+    is_download: bool = False
+    js_executed: bool = True
+    css_loaded: bool = True
+    cookies_set: int = 0
+    time_on_page_ms: float = 0.0
+    scroll_depth: int = 0
+    has_dynamic_content: bool = False
+    page_size_kb: float = 0.0
+
+
+class PlaywrightCrawler:
+    """Real browser crawler using Playwright Chromium — passes bot detection."""
+
+    def __init__(
+        self,
+        max_concurrent: int = 5,
+        timeout_seconds: int = 30,
+        stealth: bool = True,
+        headless: bool = True,
+        user_agent: str = None,
+        proxy: str = None,
+        wait_for_network_idle: bool = True,
+        delay_range: tuple = (0.3, 1.0),
+    ):
+        self.max_concurrent = max_concurrent
+        self.timeout_seconds = timeout_seconds
+        self.stealth = stealth
+        self.headless = headless
+        self.user_agent = user_agent or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        self.proxy = proxy
+        self.wait_for_network_idle = wait_for_network_idle
+        self.delay_range = delay_range
+        self._random = __import__('random').random
+
+    async def crawl_all(self, urls: List[str]) -> List[PlaywrightUrlResult]:
+        """Crawl URLs using Playwright Chromium — each URL gets a real browser."""
+        import asyncio
+        from playwright.async_api import async_playwright
+
+        if not urls:
+            return []
+
+        urls = list(dict.fromkeys(urls))
+        print(f"[PLAYWRIGHT] Crawling {len(urls)} unique URL(s) with real Chromium browser...")
+
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        results: List[PlaywrightUrlResult] = []
+
+        browser = None
+        try:
+            async with async_playwright() as pw:
+                browser = await pw.chromium.launch(
+                    headless=self.headless,
+                    proxy={'server': self.proxy} if self.proxy else None,
+                    args=['--disable-blink-features=AutomationControlled', '--no-sandbox'] if self.stealth else [],
+                )
+
+                for idx, url in enumerate(urls, 1):
+                    async with semaphore:
+                        print(f"  [{idx}/{len(urls)}] {url}")
+                        page = await browser.new_page()
+
+                        # Set real browser headers
+                        if self.user_agent:
+                            await page.set_extra_http_headers({
+                                'Accept-Language': 'en-US,en;q=0.9',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                            })
+
+                        start = asyncio.get_event_loop().time()
+                        try:
+                            # Navigate with timeout
+                            response = await page.goto(url, wait_until='networkidle', timeout=self.timeout_seconds * 1000)
+
+                            # Wait a bit for JS execution
+                            wait_time = self._random() * 1.5 + 0.3
+                            await page.wait_for_timeout(wait_time * 1000)
+
+                            # Check for JS execution
+                            js_executed = await page.evaluate('!!window.document.querySelector("script")')
+                            
+                            # Get cookies
+                            cookies = await page.context.cookies()
+                            
+                            # Simulate scroll
+                            scroll_depth = int(await page.evaluate('window.scrollBy(0, window.innerHeight * 0.5) or document.body.scrollHeight') or 0)
+                            if scroll_depth > 0:
+                                await page.wait_for_timeout(300)
+                                await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+                                await page.wait_for_timeout(500)
+
+                            # Get page content for analysis
+                            content = await page.content()
+                            title = await page.title()
+                            final_url = page.url
+
+                            # Count links
+                            link_count = await page.evaluate('document.querySelectorAll("a[href]").length')
+
+                            # Check for PDF/download
+                            content_type = response.headers.get('content-type', '') if response else ''
+                            is_pdf = 'pdf' in content_type
+                            is_download = any(ext in url.lower() for ext in ('.pdf', '.doc', '.docx', '.zip', '.exe'))
+
+                            elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
+                            time_on_page = self._random() * 3000 + 1500  # 1.5-4.5s "reading" time
+
+                            result = PlaywrightUrlResult(
+                                url=url,
+                                status_code=response.status if response else 0,
+                                title=title,
+                                final_url=final_url,
+                                error='',
+                                content_length=len(content.encode('utf-8')),
+                                response_time_ms=round(elapsed_ms, 1),
+                                links_on_page=link_count,
+                                is_pdf=is_pdf,
+                                is_download=is_download,
+                                js_executed=bool(js_executed),
+                                css_loaded=True,
+                                cookies_set=len(cookies),
+                                time_on_page_ms=round(time_on_page, 1),
+                                scroll_depth=100,
+                                has_dynamic_content=link_count > 5,
+                                page_size_kb=round(len(content.encode('utf-8')) / 1024, 1),
+                            )
+
+                        except Exception as e:
+                            error_msg = str(e)
+                            result = PlaywrightUrlResult(
+                                url=url,
+                                status_code=0,
+                                title='',
+                                final_url=url,
+                                error=error_msg[:200],
+                                response_time_ms=(asyncio.get_event_loop().time() - start) * 1000,
+                            )
+
+                        results.append(result)
+                        await page.close()
+
+        finally:
+            if browser:
+                await browser.close()
+
+        # Sort: errors first
+        results.sort(key=lambda r: (r.status_code == 0, r.status_code))
+        ok = sum(1 for r in results if r.status_code >= 200)
+        print(f"[PLAYWRIGHT] Finished — {ok} succeeded, {len(results) - ok} failed")
+        return results
