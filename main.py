@@ -1895,6 +1895,28 @@ Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
 Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
 """
 
+@dataclass
+class PlaywrightUrlResult:
+    url: str
+    status_code: int
+    title: str
+    final_url: str
+    redirects: List[str] = field(default_factory=list)
+    error: str = ""
+    content_length: int = 0
+    response_time_ms: float = 0.0
+    links_on_page: int = 0
+    is_pdf: bool = False
+    is_download: bool = False
+    js_executed: bool = True
+    css_loaded: bool = True
+    cookies_set: int = 0
+    time_on_page_ms: float = 0.0
+    scroll_depth: int = 0
+    has_dynamic_content: bool = False
+    page_size_kb: float = 0.0
+
+
 class PlaywrightCrawler:
     """Real browser crawler using Playwright Chromium with anti-detection."""
 
