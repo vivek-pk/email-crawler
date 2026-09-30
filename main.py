@@ -1526,7 +1526,19 @@ def parse_args():
     # Crawler engine
     parser.add_argument('--crawler', type=str, choices=['aiohttp', 'playwright'], default='aiohttp',
                         help='Crawler engine: aiohttp (fast) or playwright (real browser, bypasses bot detection)')
-    parser.add_argument('--pw-stealth', action='store_true', help='Enable Playwright stealth mode')
+    parser.add_argument('--pw-stealth', action='store_true', help='Enable Playwright stealth mode (hides webdriver, chrome runtime, plugins)')
+    parser.add_argument('--pw-mouse', action='store_true', default=True, help='Simulate mouse movements (enables mouse trail simulation)')
+    parser.add_argument('--no-pw-mouse', action='store_true', help='Disable mouse movement simulation')
+    parser.add_argument('--pw-scroll', action='store_true', default=True, help='Simulate realistic scrolling behavior')
+    parser.add_argument('--no-pw-scroll', action='store_true', help='Disable scroll behavior simulation')
+    parser.add_argument('--pw-canvas', action='store_true', default=True, help='Patch canvas/webgl fingerprinting')
+    parser.add_argument('--no-pw-canvas', action='store_true', help='Disable canvas fingerprint patching')
+    parser.add_argument('--pw-cookies', action='store_true', default=True, help='Persist cookies between sessions')
+    parser.add_argument('--no-pw-cookies', action='store_true', help='Disable cookie persistence')
+    parser.add_argument('--pw-timing', action='store_true', default=True, help='Enable human-like timing (random delays, reading time)')
+    parser.add_argument('--no-pw-timing', action='store_true', help='Disable human timing simulation')
+    parser.add_argument('--pw-headless', action='store_true', help='Run Playwright in headless mode (hidden browser window)')
+    parser.add_argument('--pw-proxy', help='HTTP/HTTPS proxy for Playwright (e.g., http://user:pass@host:port)')
     # Threat analysis
     parser.add_argument('--threat', '-t', action='store_true', help='Run quarantine/threat analysis')
     parser.add_argument('--analyze', '-a', action='store_true', help='Run both URL crawl + threat analysis')
@@ -1629,6 +1641,13 @@ async def main():
                         max_concurrent=args.max_concurrent,
                         timeout_seconds=args.timeout,
                         stealth=args.pw_stealth,
+                        mouse_move=not args.no_pw_mouse,
+                        scroll_behavior=not args.no_pw_scroll,
+                        canvas_patch=not args.no_pw_canvas,
+                        cookie_persistence=not args.no_pw_cookies,
+                        human_timing=not args.no_pw_timing,
+                        proxy=args.pw_proxy,
+                        headless=args.pw_headless,
                     ).crawl_all(all_urls)
                     # Convert Playwright results to UrlResult format
                     from dataclasses import asdict
@@ -1670,6 +1689,13 @@ async def main():
                     max_concurrent=args.max_concurrent,
                     timeout_seconds=args.timeout,
                     stealth=args.pw_stealth,
+                    mouse_move=not args.no_pw_mouse,
+                    scroll_behavior=not args.no_pw_scroll,
+                    canvas_patch=not args.no_pw_canvas,
+                    cookie_persistence=not args.no_pw_cookies,
+                    human_timing=not args.no_pw_timing,
+                    proxy=args.pw_proxy,
+                    headless=args.pw_headless,
                 ).crawl_all(all_urls)
                 from dataclasses import asdict
                 results = [UrlResult(**{k: getattr(r, k) for k in UrlResult.__dataclass_fields__.keys()}) for r in pw_results]
@@ -1706,41 +1732,188 @@ if __name__ == '__main__':
 
 # ── Playwright Crawler ─────────────────────────────────────────
 
-@dataclass
-class PlaywrightUrlResult:
-    url: str
-    status_code: int
-    title: str
-    final_url: str
-    redirects: List[str] = field(default_factory=list)
-    error: str = ""
-    content_length: int = 0
-    response_time_ms: float = 0.0
-    links_on_page: int = 0
-    is_pdf: bool = False
-    is_download: bool = False
-    js_executed: bool = True
-    css_loaded: bool = True
-    cookies_set: int = 0
-    time_on_page_ms: float = 0.0
-    scroll_depth: int = 0
-    has_dynamic_content: bool = False
-    page_size_kb: float = 0.0
+# Stealth scripts injected into browser context
+STEALTH_SCRIPT = """
+// 1. Hide webdriver flag
+Object.defineProperty(navigator, 'webdriver', { get: () => false });
 
+// 2. Chrome runtime
+if (!window.chrome) {
+    window.chrome = { runtime: {} };
+}
+
+// 3. Navigator plugins
+Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+
+// 4. Navigator languages
+Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+
+// 5. Permissions
+const originalQuery = window.navigator.permissions.query;
+window.navigator.permissions.query = (parameters) => (
+    parameters.name === 'notifications' ?
+        Promise.resolve({ state: Notification.permission }) :
+        originalQuery(parameters)
+);
+
+// 6. Chrome app
+window.chrome.app = {
+    get isInstalled() { return false; },
+    get details() { return null; },
+    get running() { return null; }
+};
+"""
+
+MOUSE_MOVE_SCRIPT = """
+// Simulate realistic mouse movement with bezier curves
+function bezierEase(t) {
+    return t * t * (3 - 2 * t);
+}
+
+async function simulateMouseMove(page) {
+    const viewport = page.viewportSize();
+    if (!viewport) return;
+    
+    const width = viewport.width;
+    const height = viewport.height;
+    
+    // Generate random path
+    const startX = width * 0.3 + Math.random() * width * 0.4;
+    const startY = height * 0.3 + Math.random() * height * 0.4;
+    const endX = width * 0.2 + Math.random() * width * 0.6;
+    const endY = height * 0.2 + Math.random() * height * 0.6;
+    
+    const steps = 20 + Math.floor(Math.random() * 30);
+    
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const bezierT = bezierEase(t);
+        const x = startX + (endX - startX) * bezierT;
+        const y = startY + (endY - startY) * bezierT;
+        
+        const jitter = () => (Math.random() - 0.5) * 2;
+        await page.mouse.move(
+            x + jitter() * 3,
+            y + jitter() * 3,
+            { steps: 10 }
+        );
+        await new Promise(r => setTimeout(r, Math.random() * 20 + 10));
+    }
+}
+
+async function simulateScroll(page) {
+    const viewport = page.viewportSize();
+    if (!viewport) return;
+    
+    const height = viewport.height;
+    const scrollAmount = 50 + Math.floor(Math.random() * 100);
+    const direction = Math.random() > 0.5 ? 1 : -1;
+    
+    for (let i = 0; i < 5 + Math.floor(Math.random() * 10); i++) {
+        await page.mouse.wheel(0, scrollAmount * direction);
+        await new Promise(r => setTimeout(r, Math.random() * 100 + 50));
+    }
+}
+
+async function simulatePageRead(page) {
+    const viewport = page.viewportSize();
+    if (!viewport) return;
+    
+    const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+    const windowHeight = viewport.height;
+    const totalScroll = bodyHeight - windowHeight;
+    
+    if (totalScroll <= 0) return;
+    
+    const readTime = 2000 + Math.random() * 4000; // 2-6 seconds reading
+    const steps = 20 + Math.floor(Math.random() * 30);
+    
+    for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const scrollY = Math.pow(t, 1.5) * totalScroll;
+        await page.evaluate((y) => window.scrollTo(0, y), scrollY);
+        await new Promise(r => setTimeout(r, readTime / steps));
+        
+        if (Math.random() > 0.7) {
+            await simulateMouseMove(page);
+        }
+    }
+}
+"""
+
+CANVAS_PATCH_SCRIPT = """
+// Patch Canvas fingerprinting
+const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+HTMLCanvasElement.prototype.toDataURL = function(type) {
+    const ctx = this.getContext('2d');
+    if (!ctx) return originalToDataURL.apply(this, arguments);
+    
+    // Add subtle noise to canvas
+    ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.01})`;
+    ctx.fillRect(0, 0, this.width, this.height);
+    
+    return originalToDataURL.apply(this, arguments);
+};
+
+// Patch WebGL fingerprinting
+const originalGetParameter = WebGLRenderingContext.prototype.getParameter;
+WebGLRenderingContext.prototype.getParameter = function(parameter) {
+    if (parameter === 37445) { // WEBGL_renderer
+        return 'Intel Inc. -- Intel HD Graphics 630 -- 4.6.0 - Build 27.20.100.9676';
+    }
+    if (parameter === 37446) { // WEBGL_vendor
+        return 'Intel Inc.';
+    }
+    return originalGetParameter.apply(this, arguments);
+};
+
+// Patch AudioContext fingerprinting
+const originalAudioContext = window.AudioContext;
+window.AudioContext = function() {
+    const ctx = new originalAudioContext();
+    const originalGetChannelData = ctx.createAnalyser().getChannelData;
+    ctx.createAnalyser().getChannelData = function() {
+        return new Float32Array(128);
+    };
+    return ctx;
+};
+
+// Patch Font detection
+const originalQuery = DocumentQuerySelector;
+window.getFonts = async function() {
+    // Return standard fonts, not detectable fonts
+    return [];
+};
+
+// Patch timezone
+Object.defineProperty(Date.prototype, 'getTimezoneOffset', {
+    get: function() { return -300; } // UTC-5 (EST)
+});
+
+// Patch screen properties
+Object.defineProperty(screen, 'colorDepth', { get: () => 24 });
+Object.defineProperty(screen, 'pixelDepth', { get: () => 24 });
+"""
 
 class PlaywrightCrawler:
-    """Real browser crawler using Playwright Chromium — passes bot detection."""
+    """Real browser crawler using Playwright Chromium with anti-detection."""
 
     def __init__(
         self,
-        max_concurrent: int = 5,
-        timeout_seconds: int = 30,
+        max_concurrent: int = 3,
+        timeout_seconds: int = 45,
         stealth: bool = True,
         headless: bool = True,
         user_agent: str = None,
         proxy: str = None,
-        wait_for_network_idle: bool = True,
-        delay_range: tuple = (0.3, 1.0),
+        mouse_move: bool = True,
+        scroll_behavior: bool = True,
+        canvas_patch: bool = True,
+        cookie_persistence: bool = True,
+        human_timing: bool = True,
+        delay_range: tuple = (0.5, 2.0),
+        read_time_range: tuple = (2000, 6000),
+        tls_fingerprint: bool = False,
     ):
         self.max_concurrent = max_concurrent
         self.timeout_seconds = timeout_seconds
@@ -1748,12 +1921,70 @@ class PlaywrightCrawler:
         self.headless = headless
         self.user_agent = user_agent or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         self.proxy = proxy
-        self.wait_for_network_idle = wait_for_network_idle
+        self.mouse_move = mouse_move
+        self.scroll_behavior = scroll_behavior
+        self.canvas_patch = canvas_patch
+        self.cookie_persistence = cookie_persistence
+        self.human_timing = human_timing
         self.delay_range = delay_range
+        self.read_time_range = read_time_range
+        self.tls_fingerprint = tls_fingerprint
         self._random = __import__('random').random
 
+        # Cookie persistence storage
+        self._cookie_store: Dict[str, List[Dict]] = {}
+        if cookie_persistence:
+            import os
+            self._cookie_file = os.path.join(
+                os.path.dirname(__file__), '.playwright_cookies.json'
+            )
+            if os.path.exists(self._cookie_file):
+                try:
+                    with open(self._cookie_file, 'r') as f:
+                        self._cookie_store = json.load(f)
+                except:
+                    pass
+
+    def _save_cookies(self, browser_context):
+        """Save cookies for persistence between sessions."""
+        if not self.cookie_persistence:
+            return
+        try:
+            cookies = browser_context.cookies()
+            # Group by domain for storage
+            for cookie in cookies:
+                domain = cookie.get('domain', '')
+                if domain not in self._cookie_store:
+                    self._cookie_store[domain] = []
+                self._cookie_store[domain].append(cookie)
+            
+            with open(self._cookie_file, 'w') as f:
+                json.dump(self._cookie_store, f, indent=2)
+        except:
+            pass
+
+    def _load_cookies(self, browser_context, domain):
+        """Load saved cookies for a domain."""
+        if not self.cookie_persistence:
+            return
+        try:
+            cookies = self._cookie_store.get(domain, [])
+            if cookies:
+                browser_context.add_cookies([{
+                    'name': c['name'],
+                    'value': c['value'],
+                    'domain': c.get('domain', domain),
+                    'path': c.get('path', '/'),
+                    'expires': c.get('expires', None),
+                    'httpOnly': c.get('httpOnly', False),
+                    'secure': c.get('secure', False),
+                    'sameSite': c.get('sameSite', 'None')
+                } for c in cookies if c.get('domain') == domain])
+        except:
+            pass
+
     async def crawl_all(self, urls: List[str]) -> List[PlaywrightUrlResult]:
-        """Crawl URLs using Playwright Chromium — each URL gets a real browser."""
+        """Crawl URLs using Playwright Chromium with anti-detection."""
         import asyncio
         from playwright.async_api import async_playwright
 
@@ -1761,7 +1992,7 @@ class PlaywrightCrawler:
             return []
 
         urls = list(dict.fromkeys(urls))
-        print(f"[PLAYWRIGHT] Crawling {len(urls)} unique URL(s) with real Chromium browser...")
+        print(f"[PLAYWRIGHT] Crawling {len(urls)} unique URL(s) with stealth Chromium...")
 
         semaphore = asyncio.Semaphore(self.max_concurrent)
         results: List[PlaywrightUrlResult] = []
@@ -1769,10 +2000,24 @@ class PlaywrightCrawler:
         browser = None
         try:
             async with async_playwright() as pw:
+                # Launch stealth Chromium
+                launch_args = [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-blink-features=AutomationControlled',
+                ]
+                
+                if self.stealth:
+                    launch_args.extend([
+                        '--disable-dev-shm-usage',
+                        '--disable-extensions',
+                    ])
+                
                 browser = await pw.chromium.launch(
                     headless=self.headless,
                     proxy={'server': self.proxy} if self.proxy else None,
-                    args=['--disable-blink-features=AutomationControlled', '--no-sandbox'] if self.stealth else [],
+                    args=launch_args,
+                    channel='chrome',  # Use Chrome channel for better fingerprint
                 )
 
                 for idx, url in enumerate(urls, 1):
@@ -1780,50 +2025,72 @@ class PlaywrightCrawler:
                         print(f"  [{idx}/{len(urls)}] {url}")
                         page = await browser.new_page()
 
+                        # Apply stealth patches
+                        if self.stealth:
+                            await page.add_init_script(STEALTH_SCRIPT)
+                            
+                            if self.canvas_patch:
+                                await page.add_init_script(CANVAS_PATCH_SCRIPT)
+
                         # Set real browser headers
-                        if self.user_agent:
-                            await page.set_extra_http_headers({
-                                'Accept-Language': 'en-US,en;q=0.9',
-                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                            })
+                        await page.set_extra_http_headers({
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                        })
+
+                        # Load saved cookies if available
+                        parsed = urlparse(url)
+                        domain = parsed.hostname
+                        if domain:
+                            self._load_cookies(page, domain)
 
                         start = asyncio.get_event_loop().time()
                         try:
                             # Navigate with timeout
-                            response = await page.goto(url, wait_until='networkidle', timeout=self.timeout_seconds * 1000)
+                            response = await page.goto(
+                                url,
+                                wait_until='networkidle',
+                                timeout=self.timeout_seconds * 1000
+                            )
 
-                            # Wait a bit for JS execution
-                            wait_time = self._random() * 1.5 + 0.3
-                            await page.wait_for_timeout(wait_time * 1000)
+                            # Wait for page to stabilize
+                            await page.wait_for_timeout(1000)
 
-                            # Check for JS execution
-                            js_executed = await page.evaluate('!!window.document.querySelector("script")')
-                            
-                            # Get cookies
-                            cookies = await page.context.cookies()
-                            
-                            # Simulate scroll
-                            scroll_depth = int(await page.evaluate('window.scrollBy(0, window.innerHeight * 0.5) or document.body.scrollHeight') or 0)
-                            if scroll_depth > 0:
-                                await page.wait_for_timeout(300)
-                                await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
-                                await page.wait_for_timeout(500)
+                            # Simulate human behavior
+                            if self.human_timing:
+                                # Read time
+                                read_time = self._random() * (self.read_time_range[1] - self.read_time_range[0]) + self.read_time_range[0]
+                                
+                                # Scroll behavior
+                                if self.scroll_behavior:
+                                    await simulateMouseMove(page)
+                                    await simulateScroll(page)
+                                
+                                # Page reading simulation
+                                await simulatePageRead(page)
+                                
+                                # Random pause before finishing
+                                pause_time = self._random() * 2000 + 500
+                                await page.wait_for_timeout(pause_time)
 
-                            # Get page content for analysis
+                            # Get page content
                             content = await page.content()
                             title = await page.title()
                             final_url = page.url
 
-                            # Count links
-                            link_count = await page.evaluate('document.querySelectorAll("a[href]").length')
-
+                            # Analyze page
+                            js_detected = await page.evaluate('!!window.document.querySelector("script")')
+                            css_detected = await page.evaluate('!!window.document.querySelector("link[rel=stylesheet]") or !!window.document.querySelector("style")')
+                            
+                            # Count interactive elements
+                            link_count = await page.evaluate('document.querySelectorAll("a[href], button, input, select").length')
+                            
                             # Check for PDF/download
                             content_type = response.headers.get('content-type', '') if response else ''
                             is_pdf = 'pdf' in content_type
                             is_download = any(ext in url.lower() for ext in ('.pdf', '.doc', '.docx', '.zip', '.exe'))
 
                             elapsed_ms = (asyncio.get_event_loop().time() - start) * 1000
-                            time_on_page = self._random() * 3000 + 1500  # 1.5-4.5s "reading" time
 
                             result = PlaywrightUrlResult(
                                 url=url,
@@ -1836,11 +2103,11 @@ class PlaywrightCrawler:
                                 links_on_page=link_count,
                                 is_pdf=is_pdf,
                                 is_download=is_download,
-                                js_executed=bool(js_executed),
-                                css_loaded=True,
-                                cookies_set=len(cookies),
-                                time_on_page_ms=round(time_on_page, 1),
-                                scroll_depth=100,
+                                js_executed=bool(js_detected),
+                                css_loaded=bool(css_detected),
+                                cookies_set=len(await page.context.cookies()),
+                                time_on_page_ms=round(read_time + elapsed_ms, 1),
+                                scroll_depth=100 if self.scroll_behavior else 0,
                                 has_dynamic_content=link_count > 5,
                                 page_size_kb=round(len(content.encode('utf-8')) / 1024, 1),
                             )
@@ -1858,6 +2125,12 @@ class PlaywrightCrawler:
 
                         results.append(result)
                         await page.close()
+
+                # Save all cookies
+                if browser:
+                    contexts = browser.contexts
+                    for ctx in contexts:
+                        self._save_cookies(ctx)
 
         finally:
             if browser:

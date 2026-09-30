@@ -258,7 +258,14 @@ async def run_scan_logic_async(params: dict) -> dict:
                 url_results = await PlaywrightCrawler(
                     max_concurrent=max(1, max_concurrent // 2),
                     timeout_seconds=timeout,
-                    stealth=pw_stealth,
+                    stealth=params.get('pw_stealth', True),
+                    mouse_move=not params.get('no_pw_mouse', False),
+                    scroll_behavior=not params.get('no_pw_scroll', False),
+                    canvas_patch=not params.get('no_pw_canvas', False),
+                    cookie_persistence=not params.get('no_pw_cookies', False),
+                    human_timing=not params.get('no_pw_timing', False),
+                    proxy=params.get('pw_proxy', None),
+                    headless=params.get('pw_headless', True),
                 ).crawl_all(all_urls)
             else:
                 url_crawler = UrlCrawler(

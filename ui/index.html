@@ -722,6 +722,65 @@ tr:hover td {
       <input type="checkbox" id="pwStealth" checked>
       <label for="pwStealth">Stealth mode (anti-detection)</label>
     </div>
+
+    <div class="checkbox-group" id="pwMouseOption">
+      <input type="checkbox" id="pwMouse" checked>
+      <label for="pwMouse">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="M13 13l6 6"/></svg>
+        Mouse Movement Simulation
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Bezier-curve mouse trails</div>
+    </div>
+
+    <div class="checkbox-group" id="pwScrollOption">
+      <input type="checkbox" id="pwScroll" checked>
+      <label for="pwScroll">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Realistic Scroll Behavior
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Random page scrolling</div>
+    </div>
+
+    <div class="checkbox-group" id="pwCanvasOption">
+      <input type="checkbox" id="pwCanvas" checked>
+      <label for="pwCanvas">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+        Canvas/WebGL Fingerprint Patch
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Patches canvas & WebGL fingerprints</div>
+    </div>
+
+    <div class="checkbox-group" id="pwCookiesOption">
+      <input type="checkbox" id="pwCookies" checked>
+      <label for="pwCookies">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><circle cx="8" cy="9" r="1.5" fill="currentColor"/><circle cx="15" cy="9" r="1.5" fill="currentColor"/></svg>
+        Cookie Persistence
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Save cookies between sessions</div>
+    </div>
+
+    <div class="checkbox-group" id="pwTimingOption">
+      <input type="checkbox" id="pwTiming" checked>
+      <label for="pwTiming">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Human-like Timing
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Random delays & reading time</div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Proxy (optional)</label>
+      <input type="text" id="pwProxy" class="form-input" placeholder="http://user:pass@host:port">
+    </div>
+
+    <div class="checkbox-group">
+      <input type="checkbox" id="pwHeadless">
+      <label for="pwHeadless">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Headless Mode (Hidden Browser)
+      </label>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Uncheck to show browser window</div>
+    </div>
   </div>
 
   <div class="sidebar-section">
@@ -1066,6 +1125,13 @@ async function startScan() {
     same_user_agent: document.getElementById('sameUa').checked,
     crawler_engine: document.getElementById('crawlerEngine').value,
     pw_stealth: document.getElementById('pwStealth').checked,
+    no_pw_mouse: !document.getElementById('pwMouse').checked,
+    no_pw_scroll: !document.getElementById('pwScroll').checked,
+    no_pw_canvas: !document.getElementById('pwCanvas').checked,
+    no_pw_cookies: !document.getElementById('pwCookies').checked,
+    no_pw_timing: !document.getElementById('pwTiming').checked,
+    pw_proxy: document.getElementById('pwProxy').value || null,
+    pw_headless: document.getElementById('pwHeadless').checked,
     simulate_js: document.getElementById('simulateJs').checked,
     simulate_css: document.getElementById('simulateCss').checked,
     simulate_cookies: document.getElementById('simulateCookies').checked,
@@ -1266,18 +1332,39 @@ function escapeHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Update crawler hint text when engine changes
+// Update crawler hint text and visibility of Playwright options
 document.getElementById('crawlerEngine').addEventListener('change', function() {
   const hint = document.getElementById('crawlerHint');
-  const stealth = document.getElementById('stealthOption');
-  if (this.value === 'playwright') {
-    hint.textContent = 'Real Chromium browser — passes bot detection';
-    stealth.style.display = 'flex';
-  } else {
-    hint.textContent = 'Fast HTTP requests — may be detected by bot protection';
-    stealth.style.display = 'none';
-  }
+  const isPW = this.value === 'playwright';
+  
+  // Update hint
+  hint.textContent = isPW ? 'Real Chromium browser — passes bot detection' : 'Fast HTTP requests — may be detected by bot protection';
+  
+  // Show/hide all Playwright options
+  const pwOptions = ['stealthOption', 'pwMouseOption', 'pwScrollOption', 'pwCanvasOption', 'pwCookiesOption', 'pwTimingOption'];
+  pwOptions.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isPW ? 'flex' : 'none';
+  });
+  
+  // Show/hide proxy field
+  const proxyField = document.getElementById('pwProxy').parentElement;
+  proxyField.style.display = isPW ? 'block' : 'none';
+  
+  // Show/hide headless checkbox
+  const headlessGroup = document.getElementById('pwHeadless').parentElement.parentElement;
+  headlessGroup.style.display = isPW ? 'flex' : 'none';
 });
+
+// Initial state
+document.getElementById('stealthOption').style.display = 'flex';
+document.getElementById('pwMouseOption').style.display = 'flex';
+document.getElementById('pwScrollOption').style.display = 'flex';
+document.getElementById('pwCanvasOption').style.display = 'flex';
+document.getElementById('pwCookiesOption').style.display = 'flex';
+document.getElementById('pwTimingOption').style.display = 'flex';
+document.getElementById('pwProxy').parentElement.style.display = 'block';
+document.getElementById('pwHeadless').parentElement.parentElement.style.display = 'flex';
 
 function showErrorDetails() {
   if (scanData && scanData.error) {
