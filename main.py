@@ -2039,7 +2039,6 @@ class PlaywrightCrawler:
                     headless=self.headless,
                     proxy={'server': self.proxy} if self.proxy else None,
                     args=launch_args,
-                    channel='chrome',  # Use Chrome channel for better fingerprint
                 )
 
                 for idx, url in enumerate(urls, 1):
@@ -2047,10 +2046,9 @@ class PlaywrightCrawler:
                         print(f"  [{idx}/{len(urls)}] {url}")
                         page = await browser.new_page()
 
-                        # Apply stealth patches
+                        # Apply stealth patches before page loads
                         if self.stealth:
                             await page.add_init_script(STEALTH_SCRIPT)
-                            
                             if self.canvas_patch:
                                 await page.add_init_script(CANVAS_PATCH_SCRIPT)
 
@@ -2068,32 +2066,97 @@ class PlaywrightCrawler:
 
                         start = asyncio.get_event_loop().time()
                         try:
-                            # Navigate with timeout
-                            response = await page.goto(
-                                url,
-                                wait_until='networkidle',
-                                timeout=self.timeout_seconds * 1000
-                            )
+                            # Navigate: first try domcontentloaded (faster, avoids ERR_ABORTED on redirects)
+                            response = None
+                            try:
+                                response = await page.goto(url, wait_until='domcontentloaded', timeout=self.timeout_seconds * 1000)
+                            except Exception as nav_err:
+                                error_str = str(nav_err)
+                                if 'ERR_ABORTED' in error_str or 'net::' in error_str:
+                                    # Try again with load (full page load)
+                                    try:
+                                        response = await page.goto(url, wait_until='load', timeout=self.timeout_seconds * 1000)
+                                    except Exception as e2:
+                                        raise Exception(f"Navigation failed: {e2}")
+                                else:
+                                    raise
+
+                            # Wait for network to settle (with short timeout to avoid hanging)
+                            try:
+                                await page.wait_for_load_state('networkidle', timeout=5000)
+                            except Exception:
+                                pass  # Don't fail if network doesn't go idle
 
                             # Wait for page to stabilize
-                            await page.wait_for_timeout(1000)
+                            await page.wait_for_timeout(800)
 
                             # Simulate human behavior
+                            read_time_ms = 0
                             if self.human_timing:
-                                # Read time
-                                read_time = self._random() * (self.read_time_range[1] - self.read_time_range[0]) + self.read_time_range[0]
+                                read_time_ms = self._random() * (self.read_time_range[1] - self.read_time_range[0]) + self.read_time_range[0]
                                 
-                                # Scroll behavior
-                                if self.scroll_behavior:
-                                    await simulateMouseMove(page)
-                                    await simulateScroll(page)
-                                
-                                # Page reading simulation
-                                await simulatePageRead(page)
+                                # Small delay before interacting
+                                await page.wait_for_timeout(500 + self._random() * 1000)
+
+                                if self.mouse_move or self.scroll_behavior:
+                                    # Run simulation directly via evaluate (no separate init_script needed)
+                                    await page.evaluate("""
+                                        async function simulateHuman(pageEl) {
+                                            const viewport = { width: window.innerWidth, height: window.innerHeight };
+                                            const w = viewport.width;
+                                            const h = viewport.height;
+                                            
+                                            // Mouse movement
+                                            if (arguments[0]) {
+                                                const sx = w * 0.3 + Math.random() * w * 0.4;
+                                                const sy = h * 0.3 + Math.random() * h * 0.4;
+                                                const ex = w * 0.2 + Math.random() * w * 0.6;
+                                                const ey = h * 0.2 + Math.random() * h * 0.6;
+                                                const steps = 15 + Math.floor(Math.random() * 20);
+                                                for (let i = 0; i <= steps; i++) {
+                                                    const t = i / steps;
+                                                    const bezierT = t * t * (3 - 2 * t);
+                                                    const x = sx + (ex - sx) * bezierT + (Math.random() - 0.5) * 6;
+                                                    const y = sy + (ey - sy) * bezierT + (Math.random() - 0.5) * 6;
+                                                    window.__mouseX = x;
+                                                    window.__mouseY = y;
+                                                    await new Promise(r => setTimeout(r, Math.random() * 20 + 10));
+                                                }
+                                            }
+                                            
+                                            // Scroll
+                                            if (arguments[1]) {
+                                                const totalScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
+                                                if (totalScroll > 50) {
+                                                    const steps = 8 + Math.floor(Math.random() * 12);
+                                                    for (let i = 0; i < steps; i++) {
+                                                        const t = i / steps;
+                                                        window.scrollTo(0, Math.pow(t, 1.3) * totalScroll);
+                                                        await new Promise(r => setTimeout(r, Math.random() * 100 + 50));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        simulateHuman(arguments[0], arguments[1]);
+                                    """, bool(self.mouse_move), bool(self.scroll_behavior))
+
+                                # Page reading simulation (scroll to bottom and back)
+                                await page.evaluate("""
+                                    async function readPage() {
+                                        const totalScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
+                                        if (totalScroll <= 0) return;
+                                        const steps = 10 + Math.floor(Math.random() * 15);
+                                        for (let i = 0; i <= steps; i++) {
+                                            const t = i / steps;
+                                            window.scrollTo(0, Math.pow(t, 1.5) * totalScroll);
+                                            await new Promise(r => setTimeout(r, arguments[0] / steps));
+                                        }
+                                    }
+                                    readPage(arguments[0]);
+                                """, read_time_ms)
                                 
                                 # Random pause before finishing
-                                pause_time = self._random() * 2000 + 500
-                                await page.wait_for_timeout(pause_time)
+                                await page.wait_for_timeout(500 + self._random() * 2000)
 
                             # Get page content
                             content = await page.content()
@@ -2128,7 +2191,7 @@ class PlaywrightCrawler:
                                 js_executed=bool(js_detected),
                                 css_loaded=bool(css_detected),
                                 cookies_set=len(await page.context.cookies()),
-                                time_on_page_ms=round(read_time + elapsed_ms, 1),
+                                time_on_page_ms=round(read_time_ms + elapsed_ms, 1),
                                 scroll_depth=100 if self.scroll_behavior else 0,
                                 has_dynamic_content=link_count > 5,
                                 page_size_kb=round(len(content.encode('utf-8')) / 1024, 1),
