@@ -2064,6 +2064,12 @@ class PlaywrightCrawler:
                         if domain:
                             self._load_cookies(page, domain)
 
+                        # Links that serve a file abort navigation; record the download instead of an error
+                        downloads = []
+                        nav_responses = []
+                        page.on('download', lambda d: downloads.append(d))
+                        page.on('response', lambda r: r.request.is_navigation_request() and nav_responses.append(r))
+
                         start = asyncio.get_event_loop().time()
                         try:
                             # Navigate: first try domcontentloaded (faster, avoids ERR_ABORTED on redirects)
@@ -2072,6 +2078,9 @@ class PlaywrightCrawler:
                                 response = await page.goto(url, wait_until='domcontentloaded', timeout=self.timeout_seconds * 1000)
                             except Exception as nav_err:
                                 error_str = str(nav_err)
+                                await page.wait_for_timeout(500)  # the download event lands just after goto fails
+                                if downloads or 'Download is starting' in error_str:
+                                    raise  # don't re-open the link: it would count a second click
                                 if 'ERR_ABORTED' in error_str or 'net::' in error_str:
                                     # Try again with load (full page load)
                                     try:
@@ -2101,13 +2110,13 @@ class PlaywrightCrawler:
                                 if self.mouse_move or self.scroll_behavior:
                                     # Run simulation directly via evaluate (no separate init_script needed)
                                     await page.evaluate("""
-                                        async function simulateHuman(pageEl) {
+                                        async ([mouseMove, scroll]) => {
                                             const viewport = { width: window.innerWidth, height: window.innerHeight };
                                             const w = viewport.width;
                                             const h = viewport.height;
-                                            
+
                                             // Mouse movement
-                                            if (arguments[0]) {
+                                            if (mouseMove) {
                                                 const sx = w * 0.3 + Math.random() * w * 0.4;
                                                 const sy = h * 0.3 + Math.random() * h * 0.4;
                                                 const ex = w * 0.2 + Math.random() * w * 0.6;
@@ -2125,7 +2134,7 @@ class PlaywrightCrawler:
                                             }
                                             
                                             // Scroll
-                                            if (arguments[1]) {
+                                            if (scroll) {
                                                 const totalScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
                                                 if (totalScroll > 50) {
                                                     const steps = 8 + Math.floor(Math.random() * 12);
@@ -2137,22 +2146,20 @@ class PlaywrightCrawler:
                                                 }
                                             }
                                         }
-                                        simulateHuman(arguments[0], arguments[1]);
-                                    """, bool(self.mouse_move), bool(self.scroll_behavior))
+                                    """, [bool(self.mouse_move), bool(self.scroll_behavior)])
 
                                 # Page reading simulation (scroll to bottom and back)
                                 await page.evaluate("""
-                                    async function readPage() {
+                                    async (readMs) => {
                                         const totalScroll = Math.max(0, document.body.scrollHeight - window.innerHeight);
                                         if (totalScroll <= 0) return;
                                         const steps = 10 + Math.floor(Math.random() * 15);
                                         for (let i = 0; i <= steps; i++) {
                                             const t = i / steps;
                                             window.scrollTo(0, Math.pow(t, 1.5) * totalScroll);
-                                            await new Promise(r => setTimeout(r, arguments[0] / steps));
+                                            await new Promise(r => setTimeout(r, readMs / steps));
                                         }
                                     }
-                                    readPage(arguments[0]);
                                 """, read_time_ms)
                                 
                                 # Random pause before finishing
@@ -2165,7 +2172,7 @@ class PlaywrightCrawler:
 
                             # Analyze page
                             js_detected = await page.evaluate('!!window.document.querySelector("script")')
-                            css_detected = await page.evaluate('!!window.document.querySelector("link[rel=stylesheet]") or !!window.document.querySelector("style")')
+                            css_detected = await page.evaluate('!!window.document.querySelector("link[rel=stylesheet]") || !!window.document.querySelector("style")')
                             
                             # Count interactive elements
                             link_count = await page.evaluate('document.querySelectorAll("a[href], button, input, select").length')
@@ -2198,15 +2205,30 @@ class PlaywrightCrawler:
                             )
 
                         except Exception as e:
-                            error_msg = str(e)
-                            result = PlaywrightUrlResult(
-                                url=url,
-                                status_code=0,
-                                title='',
-                                final_url=url,
-                                error=error_msg[:200],
-                                response_time_ms=(asyncio.get_event_loop().time() - start) * 1000,
-                            )
+                            last = nav_responses[-1] if nav_responses else None
+                            if downloads or (last and 'attachment' in last.headers.get('content-disposition', '')):
+                                result = PlaywrightUrlResult(
+                                    url=url,
+                                    status_code=last.status if last else 0,
+                                    title=downloads[0].suggested_filename if downloads else '',
+                                    final_url=downloads[0].url if downloads else last.url,
+                                    redirects=[r.url for r in nav_responses[:-1]],
+                                    response_time_ms=round((asyncio.get_event_loop().time() - start) * 1000, 1),
+                                    is_pdf='pdf' in (last.headers.get('content-type', '') if last else ''),
+                                    is_download=True,
+                                    js_executed=False,
+                                    css_loaded=False,
+                                )
+                            else:
+                                error_msg = str(e)
+                                result = PlaywrightUrlResult(
+                                    url=url,
+                                    status_code=0,
+                                    title='',
+                                    final_url=url,
+                                    error=error_msg[:200],
+                                    response_time_ms=(asyncio.get_event_loop().time() - start) * 1000,
+                                )
 
                         results.append(result)
                         await page.close()
