@@ -2064,11 +2064,17 @@ class PlaywrightCrawler:
                         if domain:
                             self._load_cookies(page, domain)
 
-                        # Links that serve a file abort navigation; record the download instead of an error
+                        # Links that serve a file or a 204/205 (click-tracking endpoints) abort navigation;
+                        # the link was still reached, so record it instead of an error
                         downloads = []
                         nav_responses = []
                         page.on('download', lambda d: downloads.append(d))
                         page.on('response', lambda r: r.request.is_navigation_request() and nav_responses.append(r))
+
+                        def ended_without_page():
+                            last = nav_responses[-1] if nav_responses else None
+                            return bool(downloads) or bool(last and (
+                                last.status in (204, 205) or 'attachment' in last.headers.get('content-disposition', '')))
 
                         start = asyncio.get_event_loop().time()
                         try:
@@ -2079,7 +2085,7 @@ class PlaywrightCrawler:
                             except Exception as nav_err:
                                 error_str = str(nav_err)
                                 await page.wait_for_timeout(500)  # the download event lands just after goto fails
-                                if downloads or 'Download is starting' in error_str:
+                                if ended_without_page() or 'Download is starting' in error_str:
                                     raise  # don't re-open the link: it would count a second click
                                 if 'ERR_ABORTED' in error_str or 'net::' in error_str:
                                     # Try again with load (full page load)
@@ -2206,7 +2212,8 @@ class PlaywrightCrawler:
 
                         except Exception as e:
                             last = nav_responses[-1] if nav_responses else None
-                            if downloads or (last and 'attachment' in last.headers.get('content-disposition', '')):
+                            if ended_without_page():
+                                is_file = bool(downloads) or 'attachment' in last.headers.get('content-disposition', '')
                                 result = PlaywrightUrlResult(
                                     url=url,
                                     status_code=last.status if last else 0,
@@ -2215,7 +2222,7 @@ class PlaywrightCrawler:
                                     redirects=[r.url for r in nav_responses[:-1]],
                                     response_time_ms=round((asyncio.get_event_loop().time() - start) * 1000, 1),
                                     is_pdf='pdf' in (last.headers.get('content-type', '') if last else ''),
-                                    is_download=True,
+                                    is_download=is_file,
                                     js_executed=False,
                                     css_loaded=False,
                                 )
